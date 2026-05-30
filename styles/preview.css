@@ -1,0 +1,106 @@
+/* Preview modal styles */
+.preview-overlay {
+  position: fixed;
+  inset: 0;
+  background: #00000050;
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.preview-modal {
+  background: #191919;
+  color: var(--text-color, #e5e7eb);
+  border: 1px solid var(--card-border, rgba(255,255,255,0.08));
+  border-radius: 12px;
+  width: min(960px, 96vw);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--divider-color, rgba(255,255,255,0.08));
+}
+
+.preview-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.preview-content {
+  padding: 12px;
+  overflow: auto;
+  background: var(--panel-bg, transparent);
+}
+
+.preview-media {
+  max-width: 100%;
+  max-height: 70vh;
+  display: block;
+  margin: 0 auto;
+  border-radius: 8px;
+  background: var(--media-bg, #0b1220);
+}
+
+.preview-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px 16px 16px;
+  border-top: 1px solid var(--divider-color, rgba(255,255,255,0.08));
+  background: #191919;
+}
+
+.close-button {
+  background: transparent;
+  color: inherit;
+}
+
+.preview-button {
+  margin-right: 8px;
+}
+/* media queries */
+@media (max-width: 600px) {
+  .preview-overlay {
+    padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px))
+      max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+    align-items: flex-end;
+  }
+
+  .preview-modal {
+    width: 100%;
+    max-height: min(92dvh, 100%);
+    border-radius: 12px 12px 0 0;
+  }
+
+  .preview-title {
+    font-size: 0.9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  .preview-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .preview-actions .primary-button,
+  .preview-actions .btn-save {
+    width: 100% !important;
+    flex-shrink: 1 !important;
+  }
+}

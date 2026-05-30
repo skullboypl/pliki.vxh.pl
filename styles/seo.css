@@ -1,0 +1,399 @@
+/* Poradniki SEO — czytelny układ, wyraźne linki */
+
+.seo-page {
+  min-height: 100dvh;
+  width: 100%;
+  overflow-x: hidden;
+  background: #0a0a0a;
+  color: #ddd;
+  line-height: 1.6;
+  font-size: 1rem;
+}
+
+body:has(.seo-page) {
+  padding: 0 !important;
+  background: #0a0a0a !important;
+}
+
+.seo-page a {
+  color: #7ed957;
+  text-decoration: underline;
+  text-decoration-color: rgba(126, 217, 87, 0.45);
+  text-underline-offset: 3px;
+  transition: color 0.15s, text-decoration-color 0.15s;
+}
+
+.seo-page a:hover {
+  color: #9ee86f;
+  text-decoration-color: #9ee86f;
+}
+
+.seo-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #1c1c1c;
+  max-width: 800px;
+  margin: 0 auto;
+  background: #0d0d0d;
+}
+
+.seo-logo {
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: #6cbe45;
+  text-decoration: none;
+}
+
+.seo-logo:hover {
+  text-decoration: underline;
+}
+
+.seo-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: 0.88rem;
+}
+
+.seo-nav a {
+  color: #999;
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+
+.seo-nav a:hover {
+  color: #fff;
+  background: #1a1a1a;
+  text-decoration: none;
+}
+
+.seo-nav-cta {
+  color: #0a0a0a !important;
+  background: #6cbe45;
+  font-weight: 500;
+  text-decoration: none !important;
+}
+
+.seo-nav-cta:hover {
+  background: #7ed957 !important;
+  color: #0a0a0a !important;
+}
+
+.seo-nav-lang {
+  color: #666 !important;
+  font-size: 0.82rem;
+}
+
+.seo-main {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 24px 20px 56px;
+}
+
+.seo-breadcrumb {
+  font-size: 0.85rem;
+  color: #666;
+  margin: 0 0 20px;
+  line-height: 1.5;
+}
+
+.seo-breadcrumb a {
+  color: #888;
+}
+
+.seo-breadcrumb a:hover {
+  color: #6cbe45;
+}
+
+.seo-breadcrumb span {
+  color: #444;
+  margin: 0 6px;
+}
+
+.seo-main h1 {
+  font-size: clamp(1.45rem, 4vw, 1.85rem);
+  font-weight: 500;
+  margin: 0 0 14px;
+  color: #fff;
+  line-height: 1.3;
+}
+
+.seo-lead {
+  font-size: 1.05rem;
+  color: #aaa;
+  margin: 0 0 28px;
+  line-height: 1.65;
+}
+
+.seo-section {
+  margin-bottom: 28px;
+  padding: 18px 0;
+  border-top: 1px solid #1a1a1a;
+}
+
+.seo-section:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.seo-section h2 {
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: #e0e0e0;
+  margin: 0 0 12px;
+}
+
+.seo-section p {
+  margin: 0 0 12px;
+  color: #999;
+  font-size: 0.98rem;
+}
+
+.seo-section p:last-child {
+  margin-bottom: 0;
+}
+
+.seo-cta-block {
+  margin: 28px 0 32px;
+  padding: 20px;
+  background: #111;
+  border: 1px solid #252525;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.seo-cta {
+  display: inline-block;
+  padding: 14px 28px;
+  background: #6cbe45;
+  color: #0a0a0a !important;
+  font-size: 1.05rem;
+  font-weight: 500;
+  text-decoration: none !important;
+  border-radius: 10px;
+}
+
+.seo-cta:hover {
+  background: #7ed957;
+  color: #0a0a0a !important;
+}
+
+.seo-cta-hint {
+  display: block;
+  margin-top: 10px;
+  font-size: 0.82rem;
+  color: #555;
+}
+
+.seo-hub-heading {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #ccc;
+  margin: 32px 0 14px;
+}
+
+.seo-topics {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.seo-topics li {
+  margin: 0;
+}
+
+.seo-topic-card {
+  display: block;
+  padding: 16px 18px;
+  background: #111;
+  border: 1px solid #1e1e1e;
+  border-radius: 12px;
+  text-decoration: none !important;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.seo-topic-card:hover {
+  border-color: #3a5a28;
+  background: #141a12;
+}
+
+.seo-topic-card strong {
+  display: block;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #eee;
+  margin-bottom: 6px;
+  line-height: 1.35;
+}
+
+.seo-topic-card span {
+  display: block;
+  font-size: 0.88rem;
+  color: #777;
+  line-height: 1.45;
+  font-weight: 400;
+}
+
+.seo-footer-links {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid #1a1a1a;
+  font-size: 0.9rem;
+  color: #666;
+  line-height: 1.8;
+}
+
+.seo-footer-links a {
+  margin-right: 4px;
+}
+
+.seo-related {
+  margin-top: 36px;
+  padding: 20px;
+  background: #0f0f0f;
+  border: 1px solid #1c1c1c;
+  border-radius: 12px;
+}
+
+.seo-related h2 {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #888;
+  margin: 0 0 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.seo-related ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.seo-related li {
+  margin: 0;
+}
+
+.seo-related a {
+  display: inline-block;
+  font-size: 0.95rem;
+  text-decoration: underline;
+}
+
+@media (max-width: 639px) {
+  .seo-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px max(16px, env(safe-area-inset-right, 0px)) 12px
+      max(16px, env(safe-area-inset-left, 0px));
+  }
+
+  .seo-nav {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 6px 8px;
+    font-size: 0.84rem;
+  }
+
+  .seo-nav a {
+    padding: 6px 8px;
+  }
+
+  .seo-nav-cta {
+    margin-left: auto;
+  }
+
+  .seo-main {
+    padding: 20px max(16px, env(safe-area-inset-right, 0px)) 40px
+      max(16px, env(safe-area-inset-left, 0px));
+  }
+
+  .seo-lead {
+    font-size: 1rem;
+  }
+
+  .seo-cta-block {
+    padding: 16px;
+  }
+
+  .seo-cta {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 14px 20px;
+    text-align: center;
+  }
+
+  .seo-topic-card {
+    padding: 14px 16px;
+  }
+
+  .seo-related {
+    padding: 16px;
+  }
+
+  .seo-page .site-footer {
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+}
+
+@media (max-width: 380px) {
+  .seo-logo {
+    font-size: 0.98rem;
+    overflow-wrap: anywhere;
+  }
+
+  .seo-nav {
+    font-size: 0.8rem;
+  }
+
+  .seo-nav-lang {
+    flex: 0 0 auto;
+  }
+
+  .seo-main h1 {
+    font-size: 1.35rem;
+  }
+}
+
+@media (min-width: 640px) {
+  .seo-main {
+    padding: 32px 24px 64px;
+  }
+
+  .seo-topics {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .seo-header {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+}
+
+@media (min-width: 900px) {
+  .seo-main,
+  .seo-header {
+    max-width: 720px;
+  }
+
+  .seo-header {
+    max-width: 800px;
+  }
+}

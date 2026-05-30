@@ -1,0 +1,149 @@
+.site-footer {
+  margin-top: 32px;
+  padding: 24px 0 8px;
+  border-top: 1px solid #1a1a1a;
+  text-align: center;
+}
+
+.site-footer-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.site-footer-actions:empty {
+  display: none;
+  margin: 0;
+}
+
+.site-footer-app-meta {
+  font-size: 0.75rem;
+  color: #444;
+  margin: 0 0 14px;
+  line-height: 1.6;
+}
+
+.site-footer-app-meta a {
+  color: #666;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.site-footer-app-meta a:hover {
+  color: #6cbe45;
+}
+
+.site-footer-credit {
+  margin: 0 0 10px;
+  font-size: 0.82rem;
+  color: #666;
+}
+
+.site-footer-credit a {
+  color: #888;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.site-footer-credit a:hover {
+  color: #6cbe45;
+  text-decoration: underline;
+}
+
+.site-footer-github-wrap {
+  margin: 0 0 14px;
+}
+
+.site-footer-github-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid #2a2a2a;
+  background: linear-gradient(180deg, #1a1a1a 0%, #121212 100%);
+  color: #e8e8e8;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition:
+    border-color 0.2s,
+    color 0.2s,
+    box-shadow 0.2s,
+    transform 0.15s;
+}
+
+.site-footer-github-btn:hover {
+  border-color: #6cbe45;
+  color: #fff;
+  box-shadow:
+    0 0 0 1px rgba(108, 190, 69, 0.25),
+    0 4px 14px rgba(0, 0, 0, 0.35);
+  transform: translateY(-1px);
+}
+
+.site-footer-github-btn:focus-visible {
+  outline: 2px solid #6cbe45;
+  outline-offset: 2px;
+}
+
+.site-footer-github-btn svg {
+  flex-shrink: 0;
+  opacity: 0.92;
+}
+
+.site-footer-stack {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #555;
+  line-height: 1.7;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 4px 2px;
+}
+
+.site-footer-stack-item {
+  color: #666;
+}
+
+.site-footer-heart {
+  color: #c45c5c;
+  font-size: 0.7rem;
+  margin: 0 4px;
+  user-select: none;
+}
+
+.seo-page .site-footer {
+  max-width: 680px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+.seo-page .site-footer-actions {
+  align-items: center;
+  text-align: center;
+}
+
+@media (max-width: 400px) {
+  .site-footer-stack {
+    font-size: 0.7rem;
+    gap: 2px 0;
+  }
+
+  .site-footer-heart {
+    margin: 0 3px;
+  }
+
+  .site-footer-app-meta {
+    font-size: 0.7rem;
+    padding: 0 4px;
+    overflow-wrap: anywhere;
+  }
+}
