@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from 'next';
 import { Ubuntu } from 'next/font/google';
 import AppUpdateCheck from '@/components/AppUpdateCheck';
+import DevBanner from '@/components/DevBanner';
 import LegacyPwaCleanup from '@/components/LegacyPwaCleanup';
 import PwaUpdateManager from '@/components/PwaUpdateManager';
+import { isDevBannerEnabled } from '@/lib/devSite';
 import { appBootScript } from '@/lib/appBootScript';
 import { buildHomeMetadata } from '@/lib/seo/appMeta';
 import './globals.css';
@@ -26,6 +28,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const appFingerprint = process.env.APP_FINGERPRINT ?? 'unknown@0';
+  const devBanner = isDevBannerEnabled();
 
   return (
     <html lang="pl" className={ubuntu.className} suppressHydrationWarning>
@@ -42,7 +45,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body>
+      <body className={devBanner ? 'has-dev-banner' : undefined}>
+        {devBanner ? <DevBanner /> : null}
         <LegacyPwaCleanup />
         <AppUpdateCheck />
         <PwaUpdateManager />

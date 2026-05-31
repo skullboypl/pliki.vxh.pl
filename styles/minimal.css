@@ -20,6 +20,61 @@ body {
   align-items: unset;
 }
 
+.dev-banner {
+  position: sticky;
+  top: 0;
+  z-index: 1100;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  width: calc(100% + 24px);
+  margin: -12px -12px 12px;
+  padding: 8px 12px;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  text-align: center;
+  color: #fde68a;
+  background: #2a2208;
+  border-bottom: 1px solid #5c4a12;
+}
+
+.dev-banner__badge {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #1a1400;
+  background: #fbbf24;
+  border-radius: 4px;
+}
+
+.dev-banner__text a {
+  color: #6cbe45;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.dev-banner__text a:hover {
+  color: #8ed65f;
+}
+
+.dev-banner__en {
+  opacity: 0.92;
+}
+
+@media (max-width: 640px) {
+  .dev-banner__en {
+    display: block;
+    width: 100%;
+    margin-top: 2px;
+    opacity: 0.85;
+  }
+}
+
 .app-container {
   display: flex !important;
   flex-direction: column !important;

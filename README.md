@@ -14,6 +14,8 @@
 
 **Live:** [https://pliki.vxh.pl](https://pliki.vxh.pl)
 
+**Dev server (preview):** [https://pliki-vxh-pl-developer.vpsskull.vxh.pl](https://pliki-vxh-pl-developer.vpsskull.vxh.pl) — branch `dev`, for testing only; use production for everyday file sharing.
+
 ### Web app
 
 ![pliki.vxh.pl — web app (English UI)](docs/assets/WEBEN.png)
@@ -89,7 +91,11 @@ Copy `.env.example` → `.env` for local dev (`.env` is gitignored).
 | `PORT` | `80` (Docker) / `3000` (dev) | Listen port |
 | `HOSTNAME` | `0.0.0.0` | Bind address |
 | `NEXT_PUBLIC_SITE_URL` | `https://pliki.vxh.pl` | Canonical URL |
+| `NEXT_PUBLIC_DEV_BANNER` | off | Set to `1` on the dev CapRover app to show the top warning bar |
+| `NEXT_PUBLIC_OFFICIAL_SITE_URL` | `https://pliki.vxh.pl` | Link target in the dev banner |
 | `VISIT_DATA_DIR` | `data/` / `/app/data` | Visit counter file directory |
+
+**Dev CapRover app** (`pliki-vxh-pl-developer.vpsskull.vxh.pl`): deploy branch `dev`, set `NEXT_PUBLIC_DEV_BANNER=1`, enable **Has Persistent Data** → `/app/data`.
 
 ### Visit counter persistence
 
@@ -140,6 +146,8 @@ Files go device-to-device on the LAN. The server does not store transferred cont
 **pliki.vxh.pl** to lekka aplikacja webowa do transferu plików między telefonem, tabletem i komputerem w sieci lokalnej. Pliki lecą **bezpośrednio między urządzeniami** przez **WebRTC**. Serwer obsługuje tylko sygnalizację **Socket.io** — pliki **nie przechodzą** przez backend.
 
 **Strona:** [https://pliki.vxh.pl](https://pliki.vxh.pl)
+
+**Serwer dev (podgląd):** [https://pliki-vxh-pl-developer.vpsskull.vxh.pl](https://pliki-vxh-pl-developer.vpsskull.vxh.pl) — branch `dev`, tylko do testów; do codziennego użytku wybierz produkcję.
 
 ### Aplikacja web
 
@@ -216,7 +224,11 @@ Lokalnie: `.env.example` → `.env` (`.env` jest w gitignore).
 | `PORT` | `80` / `3000` | Port |
 | `HOSTNAME` | `0.0.0.0` | Bind |
 | `NEXT_PUBLIC_SITE_URL` | `https://pliki.vxh.pl` | URL kanoniczny |
+| `NEXT_PUBLIC_DEV_BANNER` | wył. | `1` na appce dev w CapRover — pasek ostrzegawczy u góry |
+| `NEXT_PUBLIC_OFFICIAL_SITE_URL` | `https://pliki.vxh.pl` | Link do produkcji w pasku dev |
 | `VISIT_DATA_DIR` | `data/` / `/app/data` | Katalog licznika odwiedzin |
+
+**Appka dev w CapRover** (`pliki-vxh-pl-developer.vpsskull.vxh.pl`): branch `dev`, env `NEXT_PUBLIC_DEV_BANNER=1`, **Has Persistent Data** → `/app/data`.
 
 ### Licznik odwiedzin — persistence
 
