@@ -1000,51 +1000,79 @@ button.btn-send {
 
 .preview-text-toolbar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
 }
 
 .preview-text-tabs {
   display: inline-flex;
-  gap: 4px;
-  padding: 3px;
-  border-radius: 8px;
-  background: #151515;
-  border: 1px solid #222;
+  flex-shrink: 0;
+  gap: 0;
+  padding: 2px;
+  border-radius: 9px;
+  background: #0c0c0c;
+  border: 1px solid #262626;
 }
 
 .preview-text-tab {
-  padding: 6px 12px;
+  padding: 7px 14px;
   font-family: inherit;
   font-size: 0.78rem;
-  color: #777;
+  font-weight: 500;
+  color: #666;
   background: transparent;
   border: none;
-  border-radius: 6px;
+  border-radius: 7px;
   cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.preview-text-tab:hover:not(.is-active) {
+  color: #999;
 }
 
 .preview-text-tab.is-active {
-  color: #ddd;
-  background: #222;
+  color: #0a0a0a;
+  background: #6cbe45;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset;
 }
 
 .preview-text-copy {
-  padding: 6px 12px;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 12px;
   font-family: inherit;
   font-size: 0.78rem;
-  color: #aaa;
-  background: #151515;
-  border: 1px solid #252525;
-  border-radius: 8px;
+  font-weight: 500;
+  color: #9ec8ff;
+  background: #121820;
+  border: 1px solid #243044;
+  border-radius: 9px;
   cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .preview-text-copy:hover {
-  color: #ddd;
-  border-color: #333;
+  color: #c2ddff;
+  background: #161e2a;
+  border-color: #2f4560;
+}
+
+.preview-text-copy.is-success {
+  color: #6cbe45;
+  background: #121a10;
+  border-color: #2a4020;
+}
+
+.preview-text-copy.is-error {
+  color: #e88;
+  background: #1a1010;
+  border-color: #402020;
 }
 
 .preview-rich-text {
@@ -1770,21 +1798,6 @@ body:has(.share-app) {
     padding: 10px 12px;
   }
 
-  .share-app .preview-text-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .share-app .preview-text-tabs {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .share-app .preview-text-copy {
-    width: 100%;
-    text-align: center;
-  }
-
   .share-app .preview-rich-text,
   .share-app .preview-text {
     max-height: min(52dvh, 420px);
@@ -1854,12 +1867,6 @@ body:has(.share-app) {
   .share-app .peer-quick-send-btn {
     width: 100%;
     min-height: 36px;
-  }
-
-  .share-app .preview-text-tab,
-  .share-app .preview-text-copy {
-    font-size: 0.82rem;
-    padding: 8px 10px;
   }
 }
 

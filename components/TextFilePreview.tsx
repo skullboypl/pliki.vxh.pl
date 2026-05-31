@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { IconCheck, IconCopy } from '@/components/icons';
 import { renderNoteContent } from '@/lib/renderNoteContent';
 
 const MAX_PREVIEW_BYTES = 512 * 1024;
@@ -124,8 +125,13 @@ export default function TextFilePreview({ url, file, lang }: Props) {
             {t.source}
           </button>
         </div>
-        <button type="button" className="preview-text-copy" onClick={copyText}>
-          {copied ? t.copied : copyError ? t.copyError : t.copy}
+        <button
+          type="button"
+          className={`preview-text-copy${copied ? ' is-success' : ''}${copyError ? ' is-error' : ''}`}
+          onClick={copyText}
+        >
+          {copied ? <IconCheck size={15} /> : <IconCopy size={15} />}
+          <span>{copied ? t.copied : copyError ? t.copyError : t.copy}</span>
         </button>
       </div>
 

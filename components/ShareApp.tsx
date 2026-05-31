@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { type Socket } from 'socket.io-client';
 import { acquireSignalingSocket, releaseSignalingSocket } from '@/lib/signalingSocket';
 import { displayNickname, isGeneratedNick } from '@/lib/nicknames';
@@ -8,6 +9,11 @@ import { detectDeviceKind, normalizeDeviceKind, type DeviceKind } from '@/lib/de
 import { IconSpinner, IconUpload, IconWifi } from '@/components/icons';
 import PeerQuickSend from '@/components/PeerQuickSend';
 import TextFilePreview from '@/components/TextFilePreview';
+
+const PreviewVideoPlayer = dynamic(() => import('@/components/PreviewVideoPlayer'), {
+  ssr: false,
+  loading: () => <p className="preview-text-status">…</p>,
+});
 import { textToNoteFile } from '@/lib/textNote';
 import ShareStrip from '@/components/ShareStrip';
 import ReceivedFilesList, { type ReceivedFile } from '@/components/ReceivedFilesList';
@@ -1978,7 +1984,11 @@ export default function ShareApp() {
                   .toLowerCase()
                   .startsWith('video/') ||
                 /\.(mp4|webm|ogg|mov|m4v)$/i.test(previewItem.fileName || '') ? (
-                <video src={previewItem.url} controls className="preview-media" />
+                <PreviewVideoPlayer
+                  src={previewItem.url}
+                  mime={previewItem.mime}
+                  fileName={previewItem.fileName}
+                />
               ) : (
                 <img src={previewItem.url} alt={previewItem.fileName} className="preview-media" />
               )}

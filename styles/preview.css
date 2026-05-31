@@ -53,6 +53,35 @@
   background: var(--media-bg, #0b1220);
 }
 
+.preview-video-wrap {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+}
+
+.preview-video-player {
+  width: 100%;
+  max-height: min(70vh, 520px);
+}
+
+/* Video.js skin — dopasowanie do ciemnego UI aplikacji */
+.preview-video-wrap {
+  --video-color-surface: #111;
+  --video-color-on-surface: #eee;
+  --video-color-primary: #6cbe45;
+  --video-color-on-primary: #0a0a0a;
+  --video-controls-background: linear-gradient(to top, rgba(0, 0, 0, 0.82), transparent);
+}
+
+@media (max-width: 600px) {
+  .preview-video-player {
+    max-height: min(58dvh, 480px);
+  }
+}
+
 .preview-actions {
   display: flex;
   align-items: center;

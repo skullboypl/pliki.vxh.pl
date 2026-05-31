@@ -1,6 +1,133 @@
 # pliki.vxh.pl
 
-[Polski](#polski) · [English](#english)
+**Send files on the same WiFi — no cloud, no account.**
+
+[English](#english) · [Polski](#polski)
+
+---
+
+<a id="english"></a>
+
+## English
+
+**pliki.vxh.pl** is a lightweight web app for sending files between phones, tablets, and computers on the same local network. Data travels **directly between devices** over **WebRTC**. The server only handles **Socket.io** signaling — files never pass through the backend.
+
+**Live:** [https://pliki.vxh.pl](https://pliki.vxh.pl)
+
+### Web app
+
+![pliki.vxh.pl — web app (English UI)](docs/assets/WEBEN.png)
+
+![pliki.vxh.pl — aplikacja web (interfejs PL)](docs/assets/WEBPL.png)
+
+### Features
+
+**P2P transfer on LAN**  
+Open the site on two devices on the same WiFi, pick a receiver, and send one or many files in a row.
+
+**Paste & quick send**  
+Paste text or an image from the clipboard into the inline field under each device — no extra dialogs.
+
+**Text notes**  
+Send short messages as `.txt` files with a readable preview (Markdown & HTML rendering, copy to clipboard).
+
+**Received files**  
+Thumbnails for images, video, and text. Preview with Video.js for video. Download single files, whole bundles, or a **ZIP** of a batch.
+
+**No login, no cloud**  
+No account. No third-party file storage.
+
+**PWA**  
+Install to your home screen for a focused, app-like UI (recommended on iPhone via Safari).
+
+![pliki.vxh.pl — PWA standalone (English)](docs/assets/PWAEN.png)
+
+![pliki.vxh.pl — PWA standalone (Polski)](docs/assets/PWAPL.png)
+
+**SEO guides**  
+Static help pages in Polish and English at `/pl` and `/en`.
+
+**Share the app**  
+Quick share via WhatsApp, Telegram, X, email, or copy link.
+
+### How it works
+
+1. Open [pliki.vxh.pl](https://pliki.vxh.pl) on two devices on the **same WiFi**.
+2. Devices on the network appear under **Devices on the network**.
+3. Tap the green button to pick files, or paste text/image into the field below.
+4. On the other device, files show up under **Received files**.
+
+### Local development
+
+Requirements: **Node.js 22+**, **pnpm 10+**
+
+```bash
+pnpm install
+pnpm dev
+```
+
+App URL: `http://localhost:3000`
+
+Production build locally:
+
+```bash
+pnpm build
+pnpm start
+```
+
+### Production (CapRover)
+
+1. Create an app in CapRover.
+2. Enable **WebSocket Support** in HTTP Settings.
+3. Deploy this repo (`Dockerfile` + `captain-definition`).
+4. Container port: **80**.
+
+Copy `.env.example` → `.env` for local dev (`.env` is gitignored).
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `80` (Docker) / `3000` (dev) | Listen port |
+| `HOSTNAME` | `0.0.0.0` | Bind address |
+| `NEXT_PUBLIC_SITE_URL` | `https://pliki.vxh.pl` | Canonical URL |
+| `VISIT_DATA_DIR` | `data/` / `/app/data` | Visit counter file directory |
+
+### Visit counter persistence
+
+Counter data lives in `visits.json`. Mount persistent storage at **`/app/data`** in CapRover (**Has Persistent Data** → Persistent Directories).
+
+### Stack
+
+| Layer | Tech |
+|-------|------|
+| Frontend | Next.js 15, React 19 |
+| File transfer | WebRTC DataChannels |
+| Signaling | Socket.io (`server.js`) |
+| Video preview | Video.js |
+| Deploy | Docker, CapRover |
+
+### Project layout
+
+```
+app/              Next.js routes (app + SEO)
+components/       UI
+lib/              WebRTC, PWA, notes, bundles, SEO
+server.js         Next.js + Socket.io + API
+server/           Visit counter, service worker
+docs/assets/      README screenshots (WEB*.png, PWA*.png)
+styles/           CSS
+```
+
+### Known limitations
+
+On **iPhone / mobile**, receiving very large files may hit browser memory limits. Prefer Safari, install as PWA, and receive huge videos on a desktop when possible.
+
+### Security
+
+Files go device-to-device on the LAN. The server does not store transferred content. Signaling groups peers by public IP (same network).
+
+### License
+
+[MIT](LICENSE) · © 2026 [skullmedia.pl](https://skullmedia.pl)
 
 ---
 
@@ -8,40 +135,54 @@
 
 ## Polski
 
-**Szybkie wysyłanie plików w tej samej sieci WiFi. Bez chmury, bez konta.**
+**Szybkie wysyłanie plików w tej samej sieci WiFi — bez chmury, bez konta.**
 
-Aplikacja webowa do transferu plików między telefonem, tabletem i komputerem w sieci lokalnej. Połączenie odbywa się bezpośrednio między urządzeniami przez **WebRTC**. Serwer obsługuje wyłącznie sygnalizację **Socket.io**. Pliki nie przechodzą przez backend.
+**pliki.vxh.pl** to lekka aplikacja webowa do transferu plików między telefonem, tabletem i komputerem w sieci lokalnej. Pliki lecą **bezpośrednio między urządzeniami** przez **WebRTC**. Serwer obsługuje tylko sygnalizację **Socket.io** — pliki **nie przechodzą** przez backend.
 
 **Strona:** [https://pliki.vxh.pl](https://pliki.vxh.pl)
 
-![Podgląd aplikacji pliki.vxh.pl](docs/assets/screenshot.png)
+### Aplikacja web
+
+![pliki.vxh.pl — web app (English UI)](docs/assets/WEBEN.png)
+
+![pliki.vxh.pl — aplikacja web (interfejs PL)](docs/assets/WEBPL.png)
 
 ### Funkcje
 
 **Transfer P2P w LAN**  
-Otwórz stronę na dwóch urządzeniach w tej samej WiFi, wybierz odbiorcę z listy i wyślij plik.
+Wejdź na stronę na dwóch urządzeniach w tej samej WiFi, wybierz odbiorcę i wyślij jeden lub wiele plików.
 
-**Bez logowania i bez chmury**  
-Nie trzeba zakładać konta ani przesyłać plików przez zewnętrzny serwer plików.
+**Wklejka i szybkie wysyłanie**  
+Pole pod urządzeniem: wklej tekst lub obraz ze schowka — bez dodatkowych okien.
 
-**Odbiór w przeglądarce**  
-Odebrane pliki pojawiają się na liście z podglądem zdjęć i wideo, opcją zapisu i podglądu.
+**Notatki tekstowe**  
+Krótkie wiadomości jako `.txt` z podglądem (Markdown i HTML), kopiowaniem treści do schowka.
+
+**Odebrane pliki**  
+Miniaturki obrazów, wideo i tekstu. Podgląd wideo przez Video.js. Pobieranie pojedynczo, całej paczki albo **ZIP** z wielu plików.
+
+**Bez logowania i chmury**  
+Bez konta i zewnętrznego storage.
 
 **PWA**  
-Można dodać stronę do ekranu początkowego na telefonie (Safari → Udostępnij → Dodaj do ekranu początkowego).
+Dodaj do ekranu początkowego — uproszczony interfejs jak aplikacja (na iPhone: Safari → Udostępnij → Dodaj do ekranu początkowego).
+
+![pliki.vxh.pl — PWA standalone (English)](docs/assets/PWAEN.png)
+
+![pliki.vxh.pl — PWA standalone (Polski)](docs/assets/PWAPL.png)
 
 **Poradniki SEO**  
-Statyczne artykuły po polsku i angielsku pod `/pl` i `/en`.
+Statyczne strony PL/EN pod `/pl` i `/en`.
 
-**Udostępnianie strony**  
-Przyciski do WhatsApp, Telegram, X, e-mail i kopiowania linku.
+**Udostępnianie**  
+WhatsApp, Telegram, X, e-mail, kopiuj link.
 
 ### Jak to działa
 
-1. Wejdź na [pliki.vxh.pl](https://pliki.vxh.pl) na dwóch urządzeniach podłączonych do tej samej sieci.
-2. Urządzenia widoczne w tej samej sieci pojawią się na liście „Urządzenia w sieci”.
-3. Kliknij zielony przycisk, wybierz plik i wyślij.
-4. Na drugim urządzeniu plik trafi do sekcji „Odebrane pliki”.
+1. Otwórz [pliki.vxh.pl](https://pliki.vxh.pl) na dwóch urządzeniach w **tej samej WiFi**.
+2. Urządzenia pojawią się w **Urządzenia w sieci**.
+3. Zielony przycisk → wybór plików, albo wklejka w polu poniżej.
+4. Na drugim urządzeniu pliki trafiają do **Odebrane pliki**.
 
 ### Uruchomienie lokalne
 
@@ -52,7 +193,7 @@ pnpm install
 pnpm dev
 ```
 
-Aplikacja startuje pod adresem `http://localhost:3000`.
+Adres: `http://localhost:3000`
 
 Tryb produkcyjny lokalnie:
 
@@ -65,209 +206,52 @@ pnpm start
 
 1. Utwórz aplikację w CapRover.
 2. Włącz **WebSocket Support** w HTTP Settings.
-3. Wdróż repozytorium. Używany jest `Dockerfile` i `captain-definition`.
+3. Wdróż repozytorium (`Dockerfile`, `captain-definition`).
 4. Port kontenera: **80**.
 
-Lokalnie: skopiuj `.env.example` → `.env` (w repozytorium jest też gotowy `.env` u Ciebie na dysku — git go ignoruje).
-
-Opcjonalne zmienne środowiskowe:
+Lokalnie: `.env.example` → `.env` (`.env` jest w gitignore).
 
 | Zmienna | Domyślnie | Opis |
 |---------|-----------|------|
-| `PORT` | `80` (Docker) / `3000` (dev) | Port nasłuchu |
-| `HOSTNAME` | `0.0.0.0` | Adres bind |
-| `NEXT_PUBLIC_SITE_URL` | `https://pliki.vxh.pl` | URL kanoniczny (sitemap, meta) |
-| `VISIT_DATA_DIR` | `data/` (dev) / `/app/data` (Docker) | Katalog z `visits.json` |
+| `PORT` | `80` / `3000` | Port |
+| `HOSTNAME` | `0.0.0.0` | Bind |
+| `NEXT_PUBLIC_SITE_URL` | `https://pliki.vxh.pl` | URL kanoniczny |
+| `VISIT_DATA_DIR` | `data/` / `/app/data` | Katalog licznika odwiedzin |
 
-### Licznik odwiedzin — persistence (CapRover)
+### Licznik odwiedzin — persistence
 
-Licznik zapisuje się w pliku `visits.json`. **Bez wolumenu każdy redeploy = nowy kontener = licznik od zera.**
+Dane w `visits.json`. W CapRover zamontuj wolumen na **`/app/data`** (Has Persistent Data → Persistent Directories).
 
-1. Przy tworzeniu aplikacji w CapRover włącz **Has Persistent Data** (jeśli app już istnieje bez tego — utwórz nową appkę z tą opcją i przenieś domenę, albo zostaw i zaakceptuj reset przy pierwszym ustawieniu wolumenu).
-2. **App Configs** → **Persistent Directories** → dodaj:
-   - **Path in App:** `/app/data`
-   - **Label:** np. `pliki-visits` (dowolna nazwa)
-3. **Save & Update**, potem deploy z GitHub.
-4. W logach kontenera po starcie powinno być: `[visits] storage: /app/data/visits.json (loaded count: …)`.
-
-Lokalnie plik trafia do `data/visits.json` w katalogu projektu (gitignore).
-
-### Architektura
+### Stack
 
 | Warstwa | Technologia |
 |---------|-------------|
 | Frontend | Next.js 15, React 19 |
-| Transfer plików | WebRTC DataChannels |
-| Sygnalizacja | Socket.io (wbudowany w `server.js`) |
-| Grupowanie peerów | Po publicznym IP (użytkownicy z tej samej sieci) |
-| SEO | Statyczne strony PL/EN, sitemap, robots |
+| Transfer | WebRTC DataChannels |
+| Sygnalizacja | Socket.io (`server.js`) |
+| Wideo | Video.js |
 | Deploy | Docker, CapRover |
 
-### Struktura projektu
+### Struktura
 
 ```
-app/              Trasy Next.js (aplikacja + poradniki SEO)
-components/       UI aplikacji i komponenty SEO
-lib/              Nicknames, device detection, SEO, share URLs
-server.js         Custom server: Next.js + Socket.io + API
-server/           Licznik odwiedzin (cache + debounced zapis)
-styles/           Style CSS
-shared/           Współdzielony kod Node (nicknames)
-docs/assets/      Zrzuty ekranu do dokumentacji
+app/              Trasy Next.js
+components/       UI
+lib/              WebRTC, PWA, notatki, paczki, SEO
+server.js         Next.js + Socket.io
+server/           Licznik, service worker
+docs/assets/      Zrzuty do README (WEB*.png, PWA*.png)
+styles/           CSS
 ```
 
-### Znane problemy
+### Znane ograniczenia
 
-**iPhone / telefon: duże pliki przy odbiorze**  
-Na iOS i na wielu telefonach odbiór dużych plików może spowodować **odświeżenie strony** lub przerwanie transferu. Przyczyną są limity pamięci przeglądarki i ograniczenia OPFS na mobile.
-
-Co pomaga:
-- odbiór dużych plików na **komputerze** lub tablecie, gdy to możliwe
-- na iPhone używaj **Safari** (nie Chrome)
-- dodaj stronę do ekranu początkowego (PWA) dla stabilniejszego działania
-- na razie unikaj bardzo dużych plików wideo na telefonie jako odbiorcy
+Na **iPhone / telefonie** bardzo duże pliki przy odbiorze mogą przekroczyć limity pamięci przeglądarki. Safari + PWA pomaga; duże wideo lepiej odbierać na komputerze.
 
 ### Bezpieczeństwo
 
-Pliki są przesyłane bezpośrednio między urządzeniami w sieci lokalnej. Serwer nie przechowuje przesyłanych plików. Sygnalizacja WebRTC wymaga, aby urządzenia były w tej samej sieci (ten sam publiczny IP).
+Pliki tylko między urządzeniami w LAN. Serwer nie przechowuje przesyłanych plików. Sygnalizacja grupuje peerów po publicznym IP (ta sama sieć).
 
 ### Licencja
 
-Projekt na licencji [MIT](LICENSE).
-
-Copyright © 2026 [skullmedia.pl](https://skullmedia.pl)
-
----
-
-<a id="english"></a>
-
-## English
-
-**Send files on the same WiFi network. No cloud, no account.**
-
-A web app for transferring files between phones, tablets, and computers on your local network. Data goes **device to device** via **WebRTC**. The server only handles **Socket.io** signaling. Files never pass through the backend.
-
-**Live app:** [https://pliki.vxh.pl](https://pliki.vxh.pl)
-
-![pliki.vxh.pl app preview](docs/assets/screenshot.png)
-
-### Features
-
-**P2P transfer on LAN**  
-Open the site on two devices on the same WiFi, pick a receiver from the list, and send a file.
-
-**No login, no cloud**  
-No account required. Files are not uploaded to a third party storage service.
-
-**Receive in the browser**  
-Incoming files appear in a list with image and video thumbnails, save, and preview options.
-
-**PWA**  
-Add the site to your home screen on mobile (Safari → Share → Add to Home Screen).
-
-**SEO guides**  
-Static articles in Polish and English at `/pl` and `/en`.
-
-**Share the app**  
-Buttons for WhatsApp, Telegram, X, email, and copy link.
-
-### How it works
-
-1. Open [pliki.vxh.pl](https://pliki.vxh.pl) on two devices on the same network.
-2. Devices on the same network show up under “Devices on the network”.
-3. Tap the green button, choose a file, and send.
-4. On the other device the file appears under “Received files”.
-
-### Local development
-
-Requirements: **Node.js 22+**, **pnpm 10+**
-
-```bash
-pnpm install
-pnpm dev
-```
-
-The app runs at `http://localhost:3000`.
-
-Local production mode:
-
-```bash
-pnpm build
-pnpm start
-```
-
-### Production (CapRover)
-
-1. Create an app in CapRover.
-2. Enable **WebSocket Support** in HTTP Settings.
-3. Deploy this repository. Uses `Dockerfile` and `captain-definition`.
-4. Container port: **80**.
-
-Locally: copy `.env.example` to `.env` (your `.env` stays on disk only; git ignores it).
-
-Optional environment variables:
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `80` (Docker) / `3000` (dev) | Listen port |
-| `HOSTNAME` | `0.0.0.0` | Bind address |
-| `NEXT_PUBLIC_SITE_URL` | `https://pliki.vxh.pl` | Canonical URL (sitemap, meta) |
-| `VISIT_DATA_DIR` | `data/` (dev) / `/app/data` (Docker) | Directory for `visits.json` |
-
-### Visit counter — persistence (CapRover)
-
-The counter is stored in `visits.json`. **Without a volume, each redeploy starts a new container and resets the count.**
-
-1. Enable **Has Persistent Data** when creating the app in CapRover.
-2. **App Configs** → **Persistent Directories**:
-   - **Path in App:** `/app/data`
-   - **Label:** e.g. `pliki-visits`
-3. **Save & Update**, then deploy.
-4. Container logs should show: `[visits] storage: /app/data/visits.json (loaded count: …)`.
-
-Locally the file is `data/visits.json` (gitignored).
-
-### Architecture
-
-| Layer | Technology |
-|-------|------------|
-| Frontend | Next.js 15, React 19 |
-| File transfer | WebRTC DataChannels |
-| Signaling | Socket.io (built into `server.js`) |
-| Peer grouping | By public IP (same network users) |
-| SEO | Static PL/EN pages, sitemap, robots |
-| Deploy | Docker, CapRover |
-
-### Project structure
-
-```
-app/              Next.js routes (app + SEO guides)
-components/       App UI and SEO components
-lib/              Nicknames, device detection, SEO, share URLs
-server.js         Custom server: Next.js + Socket.io + API
-server/           Visit counter (cache + debounced disk write)
-styles/           CSS styles
-shared/           Shared Node code (nicknames)
-docs/assets/      Documentation screenshots
-```
-
-### Known issues
-
-**iPhone / phone: large file receive**  
-On iOS and many phones, receiving **large files** may **reload the page** or interrupt the transfer. Browser memory limits and OPFS constraints on mobile are the main cause.
-
-What helps:
-- receive large files on a **computer** or tablet when possible
-- on iPhone use **Safari** (not Chrome)
-- add the site to your home screen (PWA) for more stable behavior
-- avoid very large video files on a phone as the receiver for now
-
-### Security
-
-Files are sent directly between devices on the local network. The server does not store transferred files. WebRTC signaling requires devices to share the same network (same public IP).
-
-### License
-
-Released under the [MIT](LICENSE) license.
-
-Copyright © 2026 [skullmedia.pl](https://skullmedia.pl)
+[MIT](LICENSE) · © 2026 [skullmedia.pl](https://skullmedia.pl)
