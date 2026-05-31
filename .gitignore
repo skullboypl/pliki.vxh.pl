@@ -52,6 +52,4 @@ Desktop.ini
 # old reference app
 OLD/
 
-# runtime visit counter
-/data/visits.json
-/data/*.tmp
+/data/

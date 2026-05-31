@@ -93,13 +93,8 @@ Copy `.env.example` → `.env` for local dev (`.env` is gitignored).
 | `NEXT_PUBLIC_SITE_URL` | `https://pliki.vxh.pl` | Canonical URL |
 | `NEXT_PUBLIC_DEV_BANNER` | off | Set to `1` on the dev CapRover app to show the top warning bar |
 | `NEXT_PUBLIC_OFFICIAL_SITE_URL` | `https://pliki.vxh.pl` | Link target in the dev banner |
-| `VISIT_DATA_DIR` | `data/` / `/app/data` | Visit counter file directory |
 
-**Dev CapRover app** (`pliki-vxh-pl-developer.vpsskull.vxh.pl`): deploy branch `dev`, set `NEXT_PUBLIC_DEV_BANNER=1`, enable **Has Persistent Data** → `/app/data`.
-
-### Visit counter persistence
-
-Counter data lives in `visits.json`. Mount persistent storage at **`/app/data`** in CapRover (**Has Persistent Data** → Persistent Directories).
+**Dev CapRover app** (`pliki-vxh-pl-developer.vpsskull.vxh.pl`): deploy branch `dev`, set `NEXT_PUBLIC_DEV_BANNER=1`.
 
 ### Stack
 
@@ -118,7 +113,7 @@ app/              Next.js routes (app + SEO)
 components/       UI
 lib/              WebRTC, PWA, notes, bundles, SEO
 server.js         Next.js + Socket.io + API
-server/           Visit counter, service worker
+server/           Service worker helpers
 docs/assets/      README screenshots (WEB*.png, PWA*.png)
 styles/           CSS
 ```
@@ -226,13 +221,8 @@ Lokalnie: `.env.example` → `.env` (`.env` jest w gitignore).
 | `NEXT_PUBLIC_SITE_URL` | `https://pliki.vxh.pl` | URL kanoniczny |
 | `NEXT_PUBLIC_DEV_BANNER` | wył. | `1` na appce dev w CapRover — pasek ostrzegawczy u góry |
 | `NEXT_PUBLIC_OFFICIAL_SITE_URL` | `https://pliki.vxh.pl` | Link do produkcji w pasku dev |
-| `VISIT_DATA_DIR` | `data/` / `/app/data` | Katalog licznika odwiedzin |
 
-**Appka dev w CapRover** (`pliki-vxh-pl-developer.vpsskull.vxh.pl`): branch `dev`, env `NEXT_PUBLIC_DEV_BANNER=1`, **Has Persistent Data** → `/app/data`.
-
-### Licznik odwiedzin — persistence
-
-Dane w `visits.json`. W CapRover zamontuj wolumen na **`/app/data`** (Has Persistent Data → Persistent Directories).
+**Appka dev w CapRover** (`pliki-vxh-pl-developer.vpsskull.vxh.pl`): branch `dev`, env `NEXT_PUBLIC_DEV_BANNER=1`.
 
 ### Stack
 

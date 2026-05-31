@@ -11,7 +11,6 @@ const COPY = {
     shareNative: 'Udostępnij',
     copyLink: 'Kopiuj link',
     copied: 'Skopiowano!',
-    visits: 'odwiedzin',
     whatsapp: 'WhatsApp',
     telegram: 'Telegram',
     x: 'X',
@@ -23,7 +22,6 @@ const COPY = {
     shareNative: 'Share',
     copyLink: 'Copy link',
     copied: 'Copied!',
-    visits: 'visits',
     whatsapp: 'WhatsApp',
     telegram: 'Telegram',
     x: 'X',
@@ -31,27 +29,6 @@ const COPY = {
     shareText: 'Send files on the same WiFi — no app, no cloud:',
   },
 };
-
-const VISIT_SESSION_KEY = 'vxh_visit_recorded_v1';
-const VISIT_POLL_MS = 45000;
-
-type VisitStats = { count: number; version?: number };
-
-async function fetchVisitStats(method: 'GET' | 'POST'): Promise<VisitStats | null> {
-  const res = await fetch(`/api/stats/visits?t=${Date.now()}`, {
-    method,
-    cache: 'no-store',
-    headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
-  });
-  if (!res.ok) return null;
-  const data = (await res.json()) as { count?: number; version?: number };
-  if (typeof data.count !== 'number') return null;
-  return { count: data.count, version: data.version };
-}
-
-function formatCount(n: number, lang: Lang) {
-  return new Intl.NumberFormat(lang === 'pl' ? 'pl-PL' : 'en-US').format(n);
-}
 
 function IconLink() {
   return (
@@ -111,59 +88,12 @@ type Props = { lang: Lang };
 export default function ShareStrip({ lang }: Props) {
   const t = COPY[lang];
   const [pageUrl, setPageUrl] = useState(CANONICAL_SITE);
-  const [visits, setVisits] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   const [canNativeShare, setCanNativeShare] = useState(false);
 
   useEffect(() => {
     setPageUrl(window.location.href);
     setCanNativeShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const hasRecorded = () => {
-      try {
-        return sessionStorage.getItem(VISIT_SESSION_KEY) === '1';
-      } catch {
-        return false;
-      }
-    };
-
-    const refresh = async (method: 'GET' | 'POST' = 'GET') => {
-      try {
-        const data = await fetchVisitStats(method);
-        if (!cancelled && data) setVisits(data.count);
-      } catch {
-        /* offline / dev without custom server */
-      }
-    };
-
-    (async () => {
-      const already = hasRecorded();
-      await refresh(already ? 'GET' : 'POST');
-      if (!already && !cancelled) {
-        try {
-          sessionStorage.setItem(VISIT_SESSION_KEY, '1');
-        } catch {
-          /* ignore */
-        }
-      }
-    })();
-
-    const interval = window.setInterval(() => refresh('GET'), VISIT_POLL_MS);
-
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') refresh('GET');
-    };
-    document.addEventListener('visibilitychange', onVisible);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-      document.removeEventListener('visibilitychange', onVisible);
-    };
   }, []);
 
   const canonicalUrl = useMemo(() => getCanonicalShareUrl(pageUrl), [pageUrl]);
@@ -192,7 +122,6 @@ export default function ShareStrip({ lang }: Props) {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      /* fallback */
       window.prompt(t.copyLink, canonicalUrl);
     }
   }, [canonicalUrl, t.copyLink]);
@@ -274,11 +203,6 @@ export default function ShareStrip({ lang }: Props) {
             </a>
           ))}
         </div>
-        {visits !== null && (
-          <span className="share-visit-count" title={`${formatCount(visits, lang)} ${t.visits}`}>
-            {formatCount(visits, lang)}
-          </span>
-        )}
       </div>
     </section>
   );

@@ -578,7 +578,7 @@ body {
   margin: 0;
 }
 
-/* Share + visits */
+/* Share strip */
 .share-strip {
   margin-bottom: 14px;
   padding: 6px 8px;
@@ -593,14 +593,6 @@ body {
   justify-content: center;
   gap: 12px;
   flex-wrap: wrap;
-}
-
-.share-visit-count {
-  font-size: 0.68rem;
-  color: #555;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  flex-shrink: 0;
 }
 
 .share-buttons {
@@ -695,10 +687,6 @@ body {
 @media (max-width: 420px) {
   .share-strip {
     padding: 5px 6px;
-  }
-
-  .share-visit-count {
-    font-size: 0.62rem;
   }
 
   .share-buttons {

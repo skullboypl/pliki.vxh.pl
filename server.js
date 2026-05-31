@@ -4,7 +4,6 @@ const path = require('path');
 const next = require('next');
 const { Server } = require('socket.io');
 const { generateNicknameSlug } = require('./shared/nicknames.js');
-const visitCounter = require('./server/visitCounter');
 const socketRateLimit = require('./server/socketRateLimit');
 const { buildServiceWorkerScript } = require('./server/pwaServiceWorker');
 const packageJson = require('./package.json');
@@ -167,19 +166,6 @@ const sendJson = (res, status, body) => {
   res.end(JSON.stringify(body));
 };
 
-const handleVisitApi = (req, res) => {
-  if (req.method === 'GET') {
-    sendJson(res, 200, visitCounter.getSnapshot());
-    return true;
-  }
-  if (req.method === 'POST') {
-    sendJson(res, 200, visitCounter.recordVisit());
-    return true;
-  }
-  sendJson(res, 405, { error: 'Method not allowed' });
-  return true;
-};
-
 const handleBuildIdApi = (req, res) => {
   if (req.method !== 'GET') {
     sendJson(res, 405, { error: 'Method not allowed' });
@@ -237,11 +223,6 @@ app.prepare().then(() => {
   const httpServer = createServer((req, res) => {
     const parsedUrl = parseRequestUrl(req);
     const { pathname } = parsedUrl;
-
-    if (pathname === '/api/stats/visits') {
-      handleVisitApi(req, res);
-      return;
-    }
 
     if (pathname === '/api/build-id') {
       handleBuildIdApi(req, res);

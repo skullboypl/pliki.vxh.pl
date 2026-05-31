@@ -13,9 +13,6 @@ RUN pnpm build
 ENV NODE_ENV=production
 ENV PORT=80
 ENV HOSTNAME=0.0.0.0
-ENV VISIT_DATA_DIR=/app/data
-
-RUN mkdir -p /app/data
 
 EXPOSE 80
 
