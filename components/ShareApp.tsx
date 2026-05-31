@@ -97,12 +97,15 @@ interface SendBatch {
   batchId: string;
 }
 
-/** In-memory copy — safe to clear `<input type="file">` immediately after pick. */
+/** Small files: copy to RAM so `<input type="file">` can be cleared. Large files: keep picker reference (streamed via slice, no full read). */
+const CLONE_IN_MEMORY_MAX_BYTES = 64 * 1024 * 1024;
+
 const cloneSelectedFiles = async (fileList: FileList | null): Promise<File[]> => {
   const picked = Array.from(fileList ?? []).filter((f) => f.name && f.size > 0);
   if (!picked.length) return [];
   return Promise.all(
     picked.map(async (f) => {
+      if (f.size > CLONE_IN_MEMORY_MAX_BYTES) return f;
       const buf = await f.arrayBuffer();
       return new File([buf], f.name, {
         type: f.type || 'application/octet-stream',
@@ -248,6 +251,7 @@ const MESSAGES = {
     transferCancelledRemote: 'Nadawca anulował transfer',
     transferRetrying: 'Uzupełnianie brakujących danych… ({pct}%)',
     transferIncomplete: 'Transfer niekompletny — spróbuj ponownie',
+    fileReadError: 'Nie można odczytać pliku: {msg}',
     showBTN: 'Podgląd',
     newFile: 'Nowy plik!',
   },
@@ -303,6 +307,7 @@ const MESSAGES = {
     transferCancelledRemote: 'Sender cancelled the transfer',
     transferRetrying: 'Recovering missing data… ({pct}%)',
     transferIncomplete: 'Transfer incomplete — please try again',
+    fileReadError: 'Could not read file: {msg}',
     showBTN: 'Preview',
     newFile: 'New file!',
   },
@@ -1373,7 +1378,12 @@ export default function ShareApp() {
     try {
       files = await cloneSelectedFiles(input.files);
     } catch (err) {
-      log(`⚠️ Nie można odczytać plików: ${safeErrMsg(err)}`);
+      const msg = safeErrMsg(err);
+      log(`⚠️ Nie można odczytać plików: ${msg}`);
+      setTransferInfo((prev) => ({
+        ...prev,
+        [peerId]: { text: t('fileReadError', { msg }) },
+      }));
       return;
     }
     if (!files.length) return;
