@@ -1,15 +1,24 @@
 import type { NextConfig } from 'next';
 import packageJson from './package.json';
 
+const isProd = process.env.NODE_ENV === 'production';
+
 const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_APP_VERSION: packageJson.version,
   },
   async headers() {
+    const staticCache = isProd
+      ? [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }]
+      : [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, max-age=0' },
+          { key: 'Pragma', value: 'no-cache' },
+        ];
+
     return [
       {
         source: '/_next/static/:path*',
-        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+        headers: staticCache,
       },
       {
         source: '/((?!_next/static|_next/image).*)',

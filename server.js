@@ -1,5 +1,4 @@
 const { createServer } = require('http');
-const { parse } = require('url');
 const fs = require('fs');
 const path = require('path');
 const next = require('next');
@@ -7,6 +6,7 @@ const { Server } = require('socket.io');
 const { generateNicknameSlug } = require('./shared/nicknames.js');
 const visitCounter = require('./server/visitCounter');
 const socketRateLimit = require('./server/socketRateLimit');
+const { buildServiceWorkerScript } = require('./server/pwaServiceWorker');
 const packageJson = require('./package.json');
 
 const dev = process.env.NODE_ENV !== 'production';
@@ -20,9 +20,11 @@ const readBuildId = () => {
   }
 };
 
-/** Unique per process — dev HMR miss / stale tab gets one auto-reload via AppUpdateCheck. */
+/** Unique per process — dev restart bumps fingerprint → one cache clear for stale tabs. */
 const appBuildId = dev ? `dev-${Date.now().toString(36)}` : readBuildId();
 const appVersion = packageJson.version;
+const appFingerprint = `${appBuildId}@${appVersion}`;
+process.env.APP_FINGERPRINT = appFingerprint;
 
 if (!dev && !fs.existsSync(buildIdPath)) {
   console.error(
@@ -183,7 +185,11 @@ const handleBuildIdApi = (req, res) => {
     sendJson(res, 405, { error: 'Method not allowed' });
     return true;
   }
-  sendJson(res, 200, { buildId: appBuildId, version: appVersion });
+  sendJson(res, 200, {
+    buildId: appBuildId,
+    version: appVersion,
+    fingerprint: appFingerprint,
+  });
   return true;
 };
 
@@ -196,14 +202,40 @@ const setNoCacheHeaders = (res) => {
 };
 
 const LEGACY_SW_PATHS = new Set(['/sw.js', '/dev-sw.js', '/service-worker.js']);
-const swCleanupPath = path.join(__dirname, 'public', 'sw.js');
+
+const serveServiceWorker = (res) => {
+  setNoCacheHeaders(res);
+  res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  res.setHeader('Service-Worker-Allowed', '/');
+  res.end(buildServiceWorkerScript(appFingerprint));
+};
+
+const registerSwBootstrap = `(function(){
+if(!('serviceWorker'in navigator))return;
+navigator.serviceWorker.register('/sw.js',{scope:'/',updateViaCache:'none'}).catch(function(){});
+})();`;
 
 const isImmutableAsset = (pathname) =>
   pathname.startsWith('/_next/static/') || pathname.startsWith('/_next/image/');
 
+/** Parsed URL shape expected by Next.js getRequestHandler (replaces deprecated url.parse). */
+const parseRequestUrl = (req) => {
+  const base = `http://${req.headers.host || `${hostname}:${port}`}`;
+  const url = new URL(req.url || '/', base);
+  const query = Object.fromEntries(url.searchParams);
+  return {
+    pathname: url.pathname,
+    query,
+    search: url.search,
+    hash: url.hash,
+    href: `${url.pathname}${url.search}${url.hash}`,
+    path: `${url.pathname}${url.search}`,
+  };
+};
+
 app.prepare().then(() => {
   const httpServer = createServer((req, res) => {
-    const parsedUrl = parse(req.url, true);
+    const parsedUrl = parseRequestUrl(req);
     const { pathname } = parsedUrl;
 
     if (pathname === '/api/stats/visits') {
@@ -217,16 +249,14 @@ app.prepare().then(() => {
     }
 
     if (LEGACY_SW_PATHS.has(pathname)) {
-      setNoCacheHeaders(res);
-      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-      res.end(fs.readFileSync(swCleanupPath, 'utf8'));
+      serveServiceWorker(res);
       return;
     }
 
     if (pathname === '/registerSW.js') {
       setNoCacheHeaders(res);
       res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-      res.end("if('serviceWorker'in navigator){navigator.serviceWorker.getRegistrations().then(r=>r.forEach(x=>x.unregister()));}");
+      res.end(registerSwBootstrap);
       return;
     }
 

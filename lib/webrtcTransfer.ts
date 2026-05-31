@@ -3,7 +3,7 @@
 export const TRANSFER_CONFIG = {
   MAX_SEND_RETRIES: 12,
   MAX_RESUME_ATTEMPTS: 6,
-  BUFFERED_LOW_THRESHOLD: 512 * 1024,
+  BUFFERED_LOW_THRESHOLD: 256 * 1024,
   FLUSH_TIMEOUT_MS: 180_000,
   QUIET_AFTER_END_MS: 600,
   QUIET_MAX_WAIT_MS: 180_000,
@@ -15,6 +15,12 @@ export const TRANSFER_CONFIG = {
 
 export function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+/** Copy view to exact-size ArrayBuffer — dc.send(ArrayBuffer) always sends buffer.byteLength. */
+export function toExactArrayBuffer(data: ArrayBuffer | ArrayBufferView): ArrayBuffer {
+  if (data instanceof ArrayBuffer) return data;
+  return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
 }
 
 export function ackTimeoutForFileSize(bytes: number): number {
@@ -74,10 +80,7 @@ export async function sendBinaryWithRetry(
 ): Promise<void> {
   const maxRetries = opts?.maxRetries ?? TRANSFER_CONFIG.MAX_SEND_RETRIES;
   const threshold = opts?.threshold ?? TRANSFER_CONFIG.BUFFERED_LOW_THRESHOLD;
-  const payload =
-    data instanceof ArrayBuffer
-      ? data
-      : new Uint8Array(data.buffer, data.byteOffset, data.byteLength).buffer;
+  const payload = toExactArrayBuffer(data);
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     if (opts?.abort?.()) throw new Error('cancelled');
@@ -162,6 +165,40 @@ export async function sendBlobChunks(
 }
 
 export type SendCompleteResult = 'ack' | 'incomplete' | 'timeout';
+
+/** Wait for file_recv_ready after metadata (receiver OPFS/RAM setup done). */
+export async function waitForRecvReady(
+  ctrlDc: RTCDataChannel,
+  timeoutMs = 30_000,
+): Promise<boolean> {
+  if (ctrlDc.readyState !== 'open') return false;
+
+  return new Promise<boolean>((resolve) => {
+    const onMsg = (ev: MessageEvent) => {
+      try {
+        const parsed = JSON.parse(String(ev.data)) as { type?: string };
+        if (parsed.type === 'file_recv_ready') {
+          cleanup();
+          resolve(true);
+        }
+      } catch {
+        /* ignore */
+      }
+    };
+
+    const timer = setTimeout(() => {
+      cleanup();
+      resolve(false);
+    }, timeoutMs);
+
+    const cleanup = () => {
+      ctrlDc.removeEventListener('message', onMsg);
+      clearTimeout(timer);
+    };
+
+    ctrlDc.addEventListener('message', onMsg);
+  });
+}
 
 /** Wait for file_end_ack or file_incomplete from receiver. Sends file_end each attempt. */
 export async function waitForSendComplete(

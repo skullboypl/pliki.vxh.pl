@@ -50,9 +50,12 @@ export const OG_IMAGE = {
 } as const;
 
 export const APP_ICONS = {
-  icon: [{ url: '/icon.svg', type: 'image/svg+xml' as const }],
-  shortcut: '/icon.svg',
-  apple: '/icon.svg',
+  icon: [
+    { url: '/icon', type: 'image/png' as const, sizes: '512x512' },
+    { url: '/icon.svg', type: 'image/svg+xml' as const },
+  ],
+  shortcut: '/icon-512',
+  apple: '/apple-icon',
 };
 
 export function buildHomeMetadata(): Metadata {
@@ -109,6 +112,7 @@ export function buildHomeMetadata(): Metadata {
       googleBot: { index: true, follow: true, 'max-image-preview': 'large' },
     },
     icons: APP_ICONS,
+    manifest: '/manifest.webmanifest',
     appleWebApp: {
       capable: true,
       statusBarStyle: 'black-translucent',
