@@ -29,6 +29,28 @@ const ensureDir = () => {
   }
 };
 
+const dirWritable = () => {
+  try {
+    ensureDir();
+    fs.accessSync(DATA_DIR, fs.constants.W_OK);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const logStartup = () => {
+  if (!isProd) return;
+  const fileExists = fs.existsSync(DATA_FILE);
+  const writable = dirWritable();
+  console.log(
+    `[visits] storage: ${DATA_FILE} | loaded: ${cache.count} | file: ${fileExists ? 'yes' : 'no'} | dir writable: ${writable ? 'yes' : 'no'}`
+  );
+  if (!writable) {
+    console.error('[visits] cannot write to data dir — check CapRover Persistent Directory path (/app/data)');
+  }
+};
+
 const bumpCache = () => {
   cache.version += 1;
   cache.updatedAt = Date.now();
@@ -85,9 +107,12 @@ const flush = () => {
     fs.writeFileSync(tmp, JSON.stringify({ count: cache.count }), 'utf8');
     fs.renameSync(tmp, DATA_FILE);
     lastDiskMtime = fs.statSync(DATA_FILE).mtimeMs;
-  } catch {
+  } catch (err) {
     dirty = true;
     scheduleFlush();
+    if (isProd) {
+      console.error('[visits] flush failed:', err instanceof Error ? err.message : err);
+    }
   }
 };
 
@@ -117,10 +142,7 @@ const recordVisit = () => {
 };
 
 load();
-
-if (isProd) {
-  console.log(`[visits] storage: ${DATA_FILE} (loaded count: ${cache.count})`);
-}
+logStartup();
 
 const shutdown = () => {
   if (flushTimer) {
