@@ -113,6 +113,68 @@ body {
   border-color: #2a4020;
 }
 
+.status-pill.err {
+  background: #1a1414;
+  color: #b88;
+  border-color: #332222;
+}
+
+.server-offline {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: #111;
+  border: 1px solid #252020;
+}
+
+.server-offline-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #886;
+  opacity: 0.85;
+}
+
+.server-offline-icon svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+.server-offline-title {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #ccc;
+}
+
+.server-offline-body {
+  margin: 0 0 12px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #888;
+}
+
+.server-offline-retry {
+  font-family: inherit;
+  font-size: 0.82rem;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid #333;
+  background: #1a1a1a;
+  color: #bbb;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.server-offline-retry:hover {
+  border-color: #444;
+  color: #ddd;
+  background: #222;
+}
+
 .how-box {
   background: #111;
   border: 1px solid #1c1c1c;
@@ -141,6 +203,80 @@ body {
 .how-box-bottom .how-note {
   font-size: 0.8rem;
   color: #444;
+}
+
+.app-extras {
+  margin-top: 20px;
+  margin-bottom: 4px;
+  text-align: center;
+}
+
+.pwa-hint {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  background: #111;
+  border: 1px solid #1c1c1c;
+  border-radius: 12px;
+}
+
+.pwa-hint-title {
+  margin: 0 0 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #bbb;
+}
+
+.pwa-hint-body {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #666;
+}
+
+.pwa-hint-steps {
+  margin: 0 0 12px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #777;
+}
+
+.pwa-install-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 18px;
+  border-radius: 10px;
+  border: 1px solid #2a4020;
+  background: #142010;
+  color: #8fd66a;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.pwa-install-btn:hover {
+  background: #1a2814;
+  border-color: #3a5a28;
+  color: #a8e882;
+}
+
+.app-extras-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-extras-actions .footer-link {
+  text-align: center;
+}
+
+.app-extras .logs-panel {
+  margin-top: 10px;
+  text-align: left;
 }
 
 .how-title {
@@ -381,58 +517,75 @@ body {
 
 /* Share + visits */
 .share-strip {
-  margin-bottom: 20px;
-  padding: 14px 16px;
+  margin-bottom: 14px;
+  padding: 6px 8px;
   background: #111;
   border: 1px solid #1c1c1c;
-  border-radius: 12px;
+  border-radius: 10px;
 }
 
-.share-strip-head {
+.share-strip-inner {
   display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
   flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px 12px;
-  margin-bottom: 12px;
-}
-
-.share-strip-label {
-  font-size: 0.82rem;
-  color: #888;
-  font-weight: 500;
 }
 
 .share-visit-count {
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   color: #555;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .share-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
 }
 
 .share-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-height: 40px;
-  padding: 8px 12px;
-  border-radius: 10px;
+  gap: 4px;
+  min-height: 32px;
+  padding: 6px 8px;
+  border-radius: 8px;
   border: 1px solid #2a2a2a;
   background: #1a1a1a;
   color: #bbb;
   font-family: inherit;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   text-decoration: none;
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.share-btn-icon {
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  flex-shrink: 0;
+  font-size: 0;
+  line-height: 0;
+}
+
+.share-btn-icon .share-btn-text,
+.share-strip-label {
+  display: none !important;
+}
+
+.share-btn-icon svg {
+  flex-shrink: 0;
 }
 
 .share-btn:hover {
@@ -476,30 +629,26 @@ body {
   border-color: #2a4020;
 }
 
-.share-btn-text {
-  display: none;
-}
-
-@media (min-width: 420px) {
-  .share-btn-text {
-    display: inline;
+@media (max-width: 420px) {
+  .share-strip {
+    padding: 5px 6px;
   }
-}
 
-@media (max-width: 380px) {
+  .share-visit-count {
+    font-size: 0.62rem;
+  }
+
   .share-buttons {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-width: 100%;
+    padding-bottom: 1px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
   }
 
-  .share-btn-native,
-  .share-btn-copy {
-    grid-column: 1 / -1;
-  }
-
-  .share-btn {
-    padding: 10px 8px;
-    font-size: 0.72rem;
+  .share-buttons::-webkit-scrollbar {
+    display: none;
   }
 }
 
@@ -569,6 +718,18 @@ body {
   border: none;
   border-radius: 10px;
   cursor: pointer;
+}
+
+label.btn-send {
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.btn-send.is-disabled {
+  background: #222;
+  color: #555;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .btn-send-icon {
@@ -780,15 +941,24 @@ body {
 }
 
 /* Footer actions (app) */
-.site-footer .footer-link {
+.footer-link {
   background: none;
   border: none;
-  color: #444;
+  color: #555;
   font-family: inherit;
   font-size: 0.8rem;
   cursor: pointer;
-  padding: 0;
-  text-align: left;
+  padding: 4px 8px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.footer-link:hover {
+  color: #888;
+}
+
+.site-footer .footer-link {
+  text-align: center;
 }
 
 /* Alerts */

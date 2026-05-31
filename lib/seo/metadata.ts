@@ -1,15 +1,37 @@
 import type { Metadata } from 'next';
 import type { SeoPage } from '@/lib/seo/pages';
-import { getAlternateSlug, getSlug } from '@/lib/seo/pages';
+import { getSlug } from '@/lib/seo/pages';
+import { APP_ICONS, OG_IMAGE } from '@/lib/seo/appMeta';
 import { SITE_NAME, SITE_URL, type SeoLang, hubUrl, pageUrl } from '@/lib/seo/site';
+
+function sharedSocial(title: string, description: string, url: string) {
+  return {
+    url,
+    siteName: SITE_NAME,
+    title,
+    description,
+    images: [
+      {
+        url: OG_IMAGE.url,
+        width: OG_IMAGE.width,
+        height: OG_IMAGE.height,
+        alt: title,
+        type: OG_IMAGE.type,
+      },
+    ],
+  };
+}
 
 export function buildPageMetadata(page: SeoPage, lang: SeoLang): Metadata {
   const slug = getSlug(page, lang);
   const url = pageUrl(lang, slug);
+  const title = page.title[lang];
+  const description = page.description[lang];
+  const social = sharedSocial(title, description, url);
 
   return {
-    title: page.title[lang],
-    description: page.description[lang],
+    title,
+    description,
     keywords: page.keywords[lang],
     alternates: {
       canonical: url,
@@ -22,22 +44,22 @@ export function buildPageMetadata(page: SeoPage, lang: SeoLang): Metadata {
     openGraph: {
       type: 'article',
       locale: lang === 'pl' ? 'pl_PL' : 'en_US',
-      url,
-      siteName: SITE_NAME,
-      title: page.title[lang],
-      description: page.description[lang],
+      ...social,
     },
     twitter: {
-      card: 'summary',
-      title: page.title[lang],
-      description: page.description[lang],
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [OG_IMAGE.url],
     },
+    icons: APP_ICONS,
     robots: { index: true, follow: true },
   };
 }
 
 export function buildHubMetadata(lang: SeoLang, title: string, description: string): Metadata {
   const url = hubUrl(lang);
+  const social = sharedSocial(title, description, url);
 
   return {
     title,
@@ -53,12 +75,15 @@ export function buildHubMetadata(lang: SeoLang, title: string, description: stri
     openGraph: {
       type: 'website',
       locale: lang === 'pl' ? 'pl_PL' : 'en_US',
-      url,
-      siteName: SITE_NAME,
+      ...social,
+    },
+    twitter: {
+      card: 'summary_large_image',
       title,
       description,
+      images: [OG_IMAGE.url],
     },
-    twitter: { card: 'summary', title, description },
+    icons: APP_ICONS,
     robots: { index: true, follow: true },
   };
 }

@@ -1,11 +1,12 @@
 {
   "name": "share-files-local",
-  "version": "3.0.2",
+  "version": "3.0.3",
   "license": "MIT",
   "private": true,
   "packageManager": "pnpm@10.22.0",
   "scripts": {
     "dev": "cross-env NODE_ENV=development node server.js",
+    "dev:fresh": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\" && cross-env NODE_ENV=development node server.js",
     "build": "next build",
     "start": "cross-env NODE_ENV=production node server.js",
     "lint": "next lint"

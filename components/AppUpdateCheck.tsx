@@ -2,7 +2,24 @@
 
 import { useEffect } from 'react';
 
-const STORAGE_KEY = 'vxh_build_id';
+const STORAGE_KEY = 'vxh_app_fingerprint';
+const LEGACY_STORAGE_KEY = 'vxh_build_id';
+
+function fingerprintFrom(data: { buildId?: string; version?: string }) {
+  if (!data.buildId) return '';
+  return `${data.buildId}@${data.version ?? '0'}`;
+}
+
+async function clearBrowserCaches() {
+  if ('caches' in window) {
+    const keys = await caches.keys();
+    await Promise.all(keys.map((key) => caches.delete(key)));
+  }
+  if ('serviceWorker' in navigator) {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(regs.map((reg) => reg.unregister()));
+  }
+}
 
 export default function AppUpdateCheck() {
   useEffect(() => {
@@ -16,16 +33,31 @@ export default function AppUpdateCheck() {
         });
         if (!res.ok || cancelled) return;
 
-        const data = (await res.json()) as { buildId?: string };
-        if (!data.buildId) return;
+        const data = (await res.json()) as { buildId?: string; version?: string };
+        const next = fingerprintFrom(data);
+        if (!next) return;
 
         const prev = localStorage.getItem(STORAGE_KEY);
-        if (prev && prev !== data.buildId) {
-          localStorage.setItem(STORAGE_KEY, data.buildId);
+        const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+
+        if (prev && prev !== next) {
+          localStorage.setItem(STORAGE_KEY, next);
+          localStorage.removeItem(LEGACY_STORAGE_KEY);
+          await clearBrowserCaches();
           window.location.reload();
           return;
         }
-        localStorage.setItem(STORAGE_KEY, data.buildId);
+
+        if (!prev && legacy && legacy !== data.buildId) {
+          localStorage.setItem(STORAGE_KEY, next);
+          localStorage.removeItem(LEGACY_STORAGE_KEY);
+          await clearBrowserCaches();
+          window.location.reload();
+          return;
+        }
+
+        localStorage.setItem(STORAGE_KEY, next);
+        localStorage.removeItem(LEGACY_STORAGE_KEY);
       } catch {
         /* offline */
       }
@@ -41,7 +73,7 @@ export default function AppUpdateCheck() {
     };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('pageshow', onPageShow);
-    const interval = window.setInterval(check, 120_000);
+    const interval = window.setInterval(check, 60_000);
 
     return () => {
       cancelled = true;

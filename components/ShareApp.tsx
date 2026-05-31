@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { io, Socket } from 'socket.io-client';
+import { type Socket } from 'socket.io-client';
+import { acquireSignalingSocket, releaseSignalingSocket } from '@/lib/signalingSocket';
 import { displayNickname, isGeneratedNick } from '@/lib/nicknames';
 import { detectDeviceKind, normalizeDeviceKind, type DeviceKind } from '@/lib/device';
 import { IconSpinner, IconUpload, IconWifi } from '@/components/icons';
@@ -9,6 +10,15 @@ import DownloadThumb, { hasListThumb } from '@/components/DownloadThumb';
 import ShareStrip from '@/components/ShareStrip';
 import SiteFooter, { SiteFooterAppMeta } from '@/components/SiteFooter';
 import { PeerAnimalIcon, PeerDeviceIcon } from '@/components/peer-icons';
+import {
+  TRANSFER_CONFIG,
+  ackTimeoutForFileSize,
+  quietMsForFileSize,
+  sendBinaryWithRetry,
+  sendBlobChunks,
+  waitAllFlushed,
+  waitForSendComplete,
+} from '@/lib/webrtcTransfer';
 
 const ICE_SERVERS: RTCIceServer[] = [];
 
@@ -21,6 +31,8 @@ const isMobile = () =>
   (typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches);
 const hasOPFS = () => !!(navigator?.storage && navigator.storage.getDirectory);
 const version = '3.1 (2026)';
+const SERVER_OFFLINE_GRACE_MS = 4500;
+const SERVER_OFFLINE_RECONNECT_MS = 2000;
 
 const formatSize = (bytes: number) => {
   if (bytes <= 0) return '0 B';
@@ -105,12 +117,19 @@ interface FileCancelMessage {
   type: 'file_cancel';
 }
 
+interface FileIncompleteMessage {
+  type: 'file_incomplete';
+  got?: number;
+  expected?: number;
+}
+
 type CtrlMessage =
   | HelloMessage
   | FileMetadataMessage
   | FileEndMessage
   | FileEndAckMessage
   | FileCancelMessage
+  | FileIncompleteMessage
   | Record<string, unknown>;
 
 interface SignalOffer {
@@ -171,15 +190,28 @@ const MESSAGES = {
     noLogs: '—',
     online: 'Połączono',
     offline: 'Łączenie…',
+    serverOffline: 'Brak połączenia',
+    serverOfflineTitle: 'Nie możemy połączyć się z serwisem',
+    serverOfflineBody:
+      'Bez tego połączenia nie zobaczysz innych urządzeń w sieci. Sprawdź internet lub WiFi, a potem odśwież stronę.',
+    serverOfflineRetry: 'Odśwież stronę',
     iosWarningBody: 'Na iPhone użyj Safari (nie Chrome).',
     understood: 'OK',
     iosInstallBody: 'Dla lepszego działania: Safari → Udostępnij → Dodaj do ekranu początkowego.',
     installBtn: 'Dodaj do ekranu głównego',
+    pwaTitle: 'Dodaj jako aplikację',
+    pwaBody:
+      'Możesz dodać pliki.vxh.pl na ekran główny — będzie działać jak zwykła aplikacja, bez sklepu Play czy App Store.',
+    pwaIosSteps: 'iPhone / iPad: Safari → Udostępnij → Dodaj do ekranu początkowego',
+    pwaAndroidHint: 'Android: menu Chrome → „Zainstaluj aplikację” (lub przycisk poniżej).',
+    pwaDesktopHint: 'Komputer: ikona instalacji w pasku adresu przeglądarki.',
     transferSending: 'Wysyłanie pliku…',
     transferReceiving: 'Odbieranie pliku…',
     cancelTransfer: 'Anuluj wysyłanie',
     transferCancelled: 'Wysyłanie anulowane',
     transferCancelledRemote: 'Nadawca anulował transfer',
+    transferRetrying: 'Uzupełnianie brakujących danych… ({pct}%)',
+    transferIncomplete: 'Transfer niekompletny — spróbuj ponownie',
     showBTN: 'Podgląd',
     newFile: 'Nowy plik!',
   },
@@ -216,15 +248,28 @@ const MESSAGES = {
     noLogs: '—',
     online: 'Connected',
     offline: 'Connecting…',
+    serverOffline: 'No connection',
+    serverOfflineTitle: "Can't connect to the service",
+    serverOfflineBody:
+      "Without this connection you won't see other devices on the network. Check your internet or WiFi, then refresh the page.",
+    serverOfflineRetry: 'Refresh page',
     iosWarningBody: 'On iPhone use Safari (not Chrome).',
     understood: 'OK',
     iosInstallBody: 'For best results: Safari → Share → Add to Home Screen.',
     installBtn: 'Add to Home Screen',
+    pwaTitle: 'Add as an app',
+    pwaBody:
+      'You can add pliki.vxh.pl to your home screen — it works like a regular app, no app store needed.',
+    pwaIosSteps: 'iPhone / iPad: Safari → Share → Add to Home Screen',
+    pwaAndroidHint: 'Android: Chrome menu → “Install app” (or use the button below).',
+    pwaDesktopHint: 'Desktop: use the install icon in the browser address bar.',
     transferSending: 'Sending file…',
     transferReceiving: 'Receiving file…',
     cancelTransfer: 'Cancel upload',
     transferCancelled: 'Upload cancelled',
     transferCancelledRemote: 'Sender cancelled the transfer',
+    transferRetrying: 'Recovering missing data… ({pct}%)',
+    transferIncomplete: 'Transfer incomplete — please try again',
     showBTN: 'Preview',
     newFile: 'New file!',
   },
@@ -256,6 +301,10 @@ const LOGS = {
     fileReceived: (name: string) => `📥 Pobrano plik: ${name}`,
     fileSent: (name: string) => `📤 Wysłano Plik "${name}"`,
     sendError: (who: string, msg: string) => `❗ Błąd wysyłki do ${who}: ${msg}`,
+    sendResume: (offset: string, total: string, n: number) =>
+      `🔄 Wznowienie wysyłki (${n}): od ${offset} B / ${total} B`,
+    recvIncomplete: (got: string, expected: string, n: number) =>
+      `🔄 Brakuje danych (${n}): ${got} / ${expected} B — proszę nadawcę o uzupełnienie`,
   },
   en: {
     connectedWithId: (code: string) => `Connected! Your code: ${code}`,
@@ -279,6 +328,10 @@ const LOGS = {
     fileReceived: (name: string) => `📥 File "${name}" has been received`,
     fileSent: (name: string) => `📤 File "${name}" has been sent`,
     sendError: (who: string, msg: string) => `❗ Send error to ${who}: ${msg}`,
+    sendResume: (offset: string, total: string, n: number) =>
+      `🔄 Resuming send (${n}): from ${offset} B / ${total} B`,
+    recvIncomplete: (got: string, expected: string, n: number) =>
+      `🔄 Missing data (${n}): ${got} / ${expected} B — requesting remainder from sender`,
   },
 };
 
@@ -327,6 +380,7 @@ export default function ShareApp() {
   const [messages, setMessages] = useState<string[]>([]);
   const [myName, setMyName] = useState('');
   const [connected, setConnected] = useState(false);
+  const [serverUnavailable, setServerUnavailable] = useState(false);
   const [peerNames, setPeerNames] = useState<Record<string, string>>({});
   const [, setIncomingConnectionRequest] = useState<string | null>(null);
   const [transferProgress, setTransferProgress] = useState<Record<string, TransferProgressEntry>>({});
@@ -338,10 +392,12 @@ export default function ShareApp() {
   const [previewItem, setPreviewItem] = useState<DownloadLink | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
-  const [showIosInstallPrompt, setShowIosInstallPrompt] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [deviceHints, setDeviceHints] = useState({ ios: false, android: false });
   const [showNameEdit, setShowNameEdit] = useState(false);
 
   const socketRef = useRef<Socket | null>(null);
+  const wasConnectedRef = useRef(false);
   const peerConnections = useRef<Record<string, RTCPeerConnection>>({});
   const ctrlChannels = useRef<Record<string, RTCDataChannel>>({});
   const fileChannels = useRef<Record<string, RTCDataChannel>>({});
@@ -360,10 +416,13 @@ export default function ShareApp() {
   const receivedBytes = useRef<Record<string, number>>({});
   const writeQueues = useRef<Record<string, Promise<void>>>({});
   const dbgChunks = useRef<Record<string, number>>({});
+  const resumeAttempts = useRef<Record<string, number>>({});
+  const activeSendFiles = useRef<Record<string, File>>({});
   const peerAgent = useRef<Record<string, PeerAgent>>({});
   const peerNamesRef = useRef(peerNames);
   const langRef = useRef(lang);
-  const pendingFilePick = useRef<string | null>(null);
+  const pendingSendFiles = useRef<Record<string, File>>({});
+  const [pendingSendPeerId, setPendingSendPeerId] = useState<string | null>(null);
   const downloadsRef = useRef<HTMLDivElement | null>(null);
   peerNamesRef.current = peerNames;
   langRef.current = lang;
@@ -437,28 +496,50 @@ export default function ShareApp() {
 
   const L = LOGS[lang] || LOGS.pl;
 
-  const tryOpenFilePicker = (peerId: string) => {
+  const tryStartPendingSend = (peerId: string) => {
+    if (
+      fileChannels.current[peerId]?.readyState !== 'open' ||
+      ctrlChannels.current[peerId]?.readyState !== 'open'
+    ) {
+      return false;
+    }
+    setConnectingPeer(null);
+    const file = pendingSendFiles.current[peerId];
+    if (!file) return false;
+    delete pendingSendFiles.current[peerId];
+    setPendingSendPeerId(null);
+    startFileSend(peerId, file);
+    return true;
+  };
+
+  const ensureConnection = (peerId: string) => {
+    if (!myName.trim()) return;
     if (
       fileChannels.current[peerId]?.readyState === 'open' &&
       ctrlChannels.current[peerId]?.readyState === 'open'
     ) {
-      setConnectingPeer(null);
-      pendingFilePick.current = null;
-      document.getElementById(`file-input-${peerId}`)?.click();
-      return true;
+      return;
     }
-    return false;
+    setConnectingPeer(peerId);
+    if (!peerConnections.current[peerId]) createPeerConnection(peerId, true);
+    socketRef.current?.emit('request_connection', peerId);
   };
 
   const clearTransferUi = (peerId: string) => {
     delete sendAbortFlags.current[peerId];
     delete sendReaders.current[peerId];
+    delete activeSendFiles.current[peerId];
     setTransferProgress((p) => {
       const n = { ...p };
       delete n[peerId];
       return n;
     });
   };
+
+  const getReceivedBytes = (peerId: string) =>
+    opfsWriters.current[peerId]
+      ? opfsOffsets.current[peerId] || 0
+      : receivedBytes.current[peerId] || 0;
 
   const abortReceive = async (peerId: string) => {
     const meta = fileMetadata.current[peerId];
@@ -480,6 +561,10 @@ export default function ShareApp() {
     delete writeQueues.current[peerId];
     delete opfsOffsets.current[peerId];
     delete dbgChunks.current[peerId];
+    delete resumeAttempts.current[peerId];
+    delete activeSendFiles.current[peerId];
+    delete pendingSendFiles.current[peerId];
+    if (pendingSendPeerId === peerId) setPendingSendPeerId(null);
     clearTransferUi(peerId);
     if (meta?.name) {
       log(`CTRL anulowano odbiór: ${meta.name}`);
@@ -490,6 +575,9 @@ export default function ShareApp() {
     sendAbortFlags.current[peerId] = true;
     sendReaders.current[peerId]?.cancel().catch(() => {});
     delete sendReaders.current[peerId];
+    delete activeSendFiles.current[peerId];
+    delete pendingSendFiles.current[peerId];
+    setPendingSendPeerId((id) => (id === peerId ? null : id));
     const ctrl = ctrlChannels.current[peerId];
     if (ctrl?.readyState === 'open') {
       try {
@@ -535,6 +623,10 @@ export default function ShareApp() {
     delete opfsHandles.current[peerId];
     delete sendAbortFlags.current[peerId];
     delete sendReaders.current[peerId];
+    delete resumeAttempts.current[peerId];
+    delete activeSendFiles.current[peerId];
+    delete pendingSendFiles.current[peerId];
+    setPendingSendPeerId((id) => (id === peerId ? null : id));
 
     setTransferProgress((p) => {
       const n = { ...p };
@@ -566,10 +658,11 @@ export default function ShareApp() {
     return { handle, file };
   }
 
-  async function waitQuietAfterFileEnd(peerId: string, quietMs = 300, maxMs = 120000) {
+  async function waitQuietAfterFileEnd(peerId: string, maxMs = TRANSFER_CONFIG.QUIET_MAX_WAIT_MS) {
     const total = fileMetadata.current[peerId]?.size || 0;
     if (!total) return;
 
+    const quietMs = quietMsForFileSize(total);
     const deadline = Date.now() + maxMs;
     while (Date.now() < deadline) {
       try {
@@ -578,9 +671,7 @@ export default function ShareApp() {
         /* ignore */
       }
 
-      const written = opfsWriters.current[peerId]
-        ? opfsOffsets.current[peerId] || 0
-        : receivedBytes.current[peerId] || 0;
+      const written = getReceivedBytes(peerId);
 
       if (written >= total) {
         const idle = performance.now() - (lastFileActivity.current[peerId] || 0);
@@ -589,7 +680,7 @@ export default function ShareApp() {
 
       await new Promise((r) => setTimeout(r, 50));
     }
-    log(`WARN: timeout oczekiwania na plik (${peerId})`);
+    log(`WARN: timeout oczekiwania na plik (${peerId}) got=${getReceivedBytes(peerId)} / ${total}`);
   }
 
   const enqueueOpfsWrite = (peerId: string, u8: Uint8Array) => {
@@ -624,9 +715,7 @@ export default function ShareApp() {
     let fileObj: File | undefined;
     const mime = meta.type || meta.mime || 'application/octet-stream';
 
-    const gotBefore = opfsWriters.current[peerId]
-      ? opfsOffsets.current[peerId] || 0
-      : receivedBytes.current[peerId] || 0;
+    const gotBefore = getReceivedBytes(peerId);
     log(
       `FINALIZE start: ${meta?.name} got=${gotBefore} size=${meta?.size || 0} mode=${opfsWriters.current[peerId] ? 'OPFS' : 'RAM'}`
     );
@@ -718,7 +807,7 @@ export default function ShareApp() {
       } catch {
         /* ignore */
       }
-      tryOpenFilePicker(peerId);
+      tryStartPendingSend(peerId);
     };
 
     dc.onmessage = async ({ data }) => {
@@ -738,6 +827,7 @@ export default function ShareApp() {
           } catch {
             /* ignore */
           }
+          delete resumeAttempts.current[peerId];
           try {
             lastFileActivity.current[peerId] = 0;
           } catch {
@@ -823,7 +913,48 @@ export default function ShareApp() {
           } catch {
             /* ignore */
           }
+
+          const meta = fileMetadata.current[peerId];
+          const expected = meta?.size || 0;
+          const got = getReceivedBytes(peerId);
+
+          if (expected > 0 && got < expected) {
+            resumeAttempts.current[peerId] = (resumeAttempts.current[peerId] || 0) + 1;
+            const attempt = resumeAttempts.current[peerId];
+            if (attempt <= TRANSFER_CONFIG.MAX_RESUME_ATTEMPTS) {
+              log(L.recvIncomplete(String(got), String(expected), attempt));
+              setTransferInfo((prev) => ({
+                ...prev,
+                [peerId]: {
+                  text: t('transferRetrying', {
+                    pct: String(Math.min(99, Math.floor((got / expected) * 100))),
+                  }),
+                },
+              }));
+              try {
+                dc.send(
+                  JSON.stringify({
+                    type: 'file_incomplete',
+                    got,
+                    expected,
+                  }),
+                );
+              } catch {
+                log('CTRL: file_incomplete błąd wysyłki');
+              }
+              return;
+            }
+            log(`FINALIZE BŁĄD: ${meta?.name} — max prób uzupełnienia (${got}/${expected} B)`);
+            setTransferInfo((prev) => ({
+              ...prev,
+              [peerId]: { text: t('transferIncomplete') },
+            }));
+            await abortReceive(peerId);
+            return;
+          }
+
           await finalizeDownload(peerId);
+          delete resumeAttempts.current[peerId];
           try {
             dc.send(JSON.stringify({ type: 'file_end_ack' }));
             log('CTRL: file_end_ack wysłany');
@@ -864,7 +995,7 @@ export default function ShareApp() {
     let lastUi = 0;
     dc.onopen = () => {
       log(L.fileOpen(whoLabel(peerNamesRef.current, peerId, langRef.current)));
-      tryOpenFilePicker(peerId);
+      tryStartPendingSend(peerId);
     };
 
     dc.onmessage = async ({ data }) => {
@@ -1002,10 +1133,12 @@ export default function ShareApp() {
 
   useEffect(() => {
     const signalingUrl = window.location.origin;
-    const socket = io(signalingUrl, { transports: ['websocket'] });
+    const socket = acquireSignalingSocket(signalingUrl);
     socketRef.current = socket;
 
-    socket.on('connect', () => {
+    const onConnect = () => {
+      wasConnectedRef.current = true;
+      setServerUnavailable(false);
       const id = socket.id ?? '';
       setSocketId(id);
       setConnected(true);
@@ -1015,7 +1148,21 @@ export default function ShareApp() {
         setMyName(stored);
         socket.emit('register_name', stored);
       }
-    });
+    };
+
+    const onDisconnect = () => {
+      setConnected(false);
+    };
+
+    const onConnectError = () => {
+      setConnected(false);
+    };
+
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    socket.on('connect_error', onConnectError);
+
+    if (socket.connected) onConnect();
 
     socket.on('assigned_name', ({ name, shortId: sid }: { name: string; shortId: string }) => {
       setShortId(sid);
@@ -1057,11 +1204,29 @@ export default function ShareApp() {
     socket.on('peer_disconnected', (peerId: string) => cleanupPeer(peerId));
 
     return () => {
-      socket.disconnect();
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('connect_error', onConnectError);
+      socket.off('assigned_name');
+      socket.off('local_peers_update');
+      socket.off('signal');
+      socket.off('incoming_connection_request');
+      socket.off('peer_disconnected');
+      releaseSignalingSocket();
       Object.keys(peerConnections.current).forEach(cleanupPeer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (connected) {
+      setServerUnavailable(false);
+      return;
+    }
+    const delay = wasConnectedRef.current ? SERVER_OFFLINE_RECONNECT_MS : SERVER_OFFLINE_GRACE_MS;
+    const timer = window.setTimeout(() => setServerUnavailable(true), delay);
+    return () => window.clearTimeout(timer);
+  }, [connected]);
 
   const parseLocalCandidate = (cand: RTCIceCandidate) => {
     const parts = cand.candidate?.split(' ') ?? [];
@@ -1088,36 +1253,48 @@ export default function ShareApp() {
     setMyName(trimmed);
   };
 
-  const requestConnection = (peerId: string) => {
-    if (!peerConnections.current[peerId]) createPeerConnection(peerId, true);
-    socketRef.current?.emit('request_connection', peerId);
-  };
-
-  const sendToPeer = (peerId: string) => {
-    if (!myName.trim()) return;
-    if (tryOpenFilePicker(peerId)) return;
-    setConnectingPeer(peerId);
-    pendingFilePick.current = peerId;
-    requestConnection(peerId);
-  };
-
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, peerId: string) => {
     const input = e.target;
     const file = input.files?.[0];
-    const fileDc = fileChannels.current[peerId];
-    const ctrlDc = ctrlChannels.current[peerId];
+    if (!file) return;
+
     delete sendAbortFlags.current[peerId];
 
-    if (!file || !fileDc || fileDc.readyState !== 'open' || !ctrlDc || ctrlDc.readyState !== 'open') {
-      if (input) input.value = '';
+    const fileDc = fileChannels.current[peerId];
+    const ctrlDc = ctrlChannels.current[peerId];
+    if (
+      fileDc?.readyState === 'open' &&
+      ctrlDc?.readyState === 'open'
+    ) {
+      startFileSend(peerId, file, input);
       return;
     }
+
+    pendingSendFiles.current[peerId] = file;
+    setPendingSendPeerId(peerId);
+    setConnectingPeer(peerId);
+    if (!peerConnections.current[peerId]) createPeerConnection(peerId, true);
+    socketRef.current?.emit('request_connection', peerId);
+    if (input) input.value = '';
+  };
+
+  function startFileSend(peerId: string, file: File, input?: HTMLInputElement | null) {
+    const fileDc = fileChannels.current[peerId];
+    const ctrlDc = ctrlChannels.current[peerId];
+    if (!fileDc || fileDc.readyState !== 'open' || !ctrlDc || ctrlDc.readyState !== 'open') {
+      return;
+    }
+
+    setConnectingPeer(null);
+    setPendingSendPeerId(null);
+    delete pendingSendFiles.current[peerId];
+    delete sendAbortFlags.current[peerId];
 
     ctrlDc.send(
       JSON.stringify({
         type: 'file_metadata',
         metadata: { name: file.name, type: file.type, size: file.size, origin: isMobile() ? 'mobile' : 'web' },
-      })
+      }),
     );
     setTransferProgress((p) => ({
       ...p,
@@ -1141,35 +1318,12 @@ export default function ShareApp() {
     })();
 
     fileDc.bufferedAmountLowThreshold = 512 * 1024;
+    activeSendFiles.current[peerId] = file;
+    resumeAttempts.current[peerId] = 0;
 
-    sendFileFast(
-      fileDc,
-      file,
-      (sent) => {
-        const flushed = Math.max(0, sent - (fileDc.bufferedAmount || 0));
-        setTransferProgress((p) => ({
-          ...p,
-          [peerId]: { mode: 'send', sent: flushed, total: file.size, received: 0 },
-        }));
-      },
-      peerId
-    )
-      .then(async () => {
+    finishFileSend(peerId, file)
+      .then(() => {
         if (sendAbortFlags.current[peerId]) return;
-        await waitAllFlushed(fileDc, 0);
-        if (sendAbortFlags.current[peerId]) return;
-
-        try {
-          fileDc.send(new Uint8Array([0]));
-        } catch {
-          /* ignore */
-        }
-        await waitAllFlushed(fileDc, 0);
-        if (sendAbortFlags.current[peerId]) return;
-
-        await waitForAck(ctrlDc);
-        if (sendAbortFlags.current[peerId]) return;
-
         log(L.sendDone(whoLabel(peerNamesRef.current, peerId, langRef.current)));
         setTransferInfo((prev) => ({ ...prev, [peerId]: { text: L.fileSent(file.name) } }));
         clearTransferUi(peerId);
@@ -1182,113 +1336,92 @@ export default function ShareApp() {
       .finally(() => {
         if (input) input.value = '';
       });
-  };
-
-  async function sendFileFast(
-    dc: RTCDataChannel,
-    file: File,
-    onProgress: ((sent: number, total: number) => void) | undefined,
-    peerId: string
-  ) {
-    const reader = file.stream().getReader();
-    sendReaders.current[peerId] = reader;
-    const SAFE_CHUNK = chunkSizes.current[peerId] || 64 * 1024;
-    let sent = 0;
-    let lastUi = 0;
-
-    try {
-      while (true) {
-        if (sendAbortFlags.current[peerId]) {
-          await reader.cancel();
-          throw new Error('cancelled');
-        }
-        if (dc.bufferedAmount > dc.bufferedAmountLowThreshold) {
-          await new Promise((res) => dc.addEventListener('bufferedamountlow', res, { once: true }));
-        }
-        if (sendAbortFlags.current[peerId]) {
-          await reader.cancel();
-          throw new Error('cancelled');
-        }
-        const { value, done } = await reader.read();
-        if (done) break;
-        const data =
-          value instanceof Uint8Array ? value : new Uint8Array((value as ArrayBufferView).buffer || value);
-
-        for (let off = 0; off < data.byteLength; off += SAFE_CHUNK) {
-          if (sendAbortFlags.current[peerId]) {
-            await reader.cancel();
-            throw new Error('cancelled');
-          }
-          if (dc.bufferedAmount > dc.bufferedAmountLowThreshold) {
-            await new Promise((res) => dc.addEventListener('bufferedamountlow', res, { once: true }));
-          }
-          const chunk = data.subarray(off, Math.min(off + SAFE_CHUNK, data.byteLength));
-          dc.send(new Uint8Array(chunk).buffer);
-          sent += Math.min(SAFE_CHUNK, data.byteLength - off);
-        }
-        const now = performance.now();
-        if (now - lastUi > 100) {
-          lastUi = now;
-          onProgress?.(sent, file.size);
-        }
-      }
-    } finally {
-      delete sendReaders.current[peerId];
-    }
   }
 
-  async function waitAllFlushed(dc: RTCDataChannel, low = 0) {
-    const deadline = Date.now() + 120000;
-    while (dc.bufferedAmount > low && Date.now() < deadline) {
-      await new Promise<void>((res) => {
-        if (dc.bufferedAmount <= low) {
-          res();
-          return;
-        }
-        const onLow = () => {
-          dc.removeEventListener('bufferedamountlow', onLow);
-          res();
-        };
-        dc.addEventListener('bufferedamountlow', onLow, { once: true });
-        setTimeout(() => {
-          dc.removeEventListener('bufferedamountlow', onLow);
-          res();
-        }, 500);
+  async function finishFileSend(peerId: string, file: File) {
+    const fileDc = fileChannels.current[peerId];
+    const ctrlDc = ctrlChannels.current[peerId];
+    if (!fileDc || fileDc.readyState !== 'open' || !ctrlDc || ctrlDc.readyState !== 'open') {
+      throw new Error('data channel not open');
+    }
+
+    const chunkSize = chunkSizes.current[peerId] || 64 * 1024;
+    const ackTimeout = ackTimeoutForFileSize(file.size);
+    let offset = 0;
+    let resumeRound = 0;
+
+    while (resumeRound <= TRANSFER_CONFIG.MAX_RESUME_ATTEMPTS) {
+      if (sendAbortFlags.current[peerId]) throw new Error('cancelled');
+
+      const blob = offset === 0 ? file : file.slice(offset);
+      await sendBlobChunks(fileDc, blob, {
+        chunkSize,
+        baseOffset: offset,
+        totalSize: file.size,
+        abort: () => !!sendAbortFlags.current[peerId],
+        onProgress: (sent) => {
+          const flushed = Math.max(0, sent - (fileDc.bufferedAmount || 0));
+          setTransferProgress((p) => ({
+            ...p,
+            [peerId]: { mode: 'send', sent: flushed, total: file.size, received: 0 },
+          }));
+        },
       });
-    }
-    if (dc.bufferedAmount > low) {
-      log(`WARN: bufor nadawcy nie opróżniony (${dc.bufferedAmount} B)`);
-    }
-  }
 
-  function waitForAck(ctrlDc: RTCDataChannel) {
-    return new Promise<void>((resolve) => {
-      const onMsg = (ev: MessageEvent) => {
-        try {
-          const parsed = JSON.parse(String(ev.data)) as CtrlMessage;
-          if (parsed.type === 'file_end_ack') {
-            ctrlDc.removeEventListener('message', onMsg);
-            resolve();
-          }
-        } catch {
-          /* ignore */
-        }
-      };
-      ctrlDc.addEventListener('message', onMsg);
-      try {
-        ctrlDc.send(JSON.stringify({ type: 'file_end' }));
-      } catch {
-        /* ignore */
+      const flushedOk = await waitAllFlushed(fileDc, 0);
+      if (!flushedOk) {
+        log(`WARN: bufor nadawcy nie opróżniony (${fileDc.bufferedAmount} B)`);
       }
-      setTimeout(() => {
-        try {
-          ctrlDc.removeEventListener('message', onMsg);
-        } catch {
-          /* ignore */
-        }
-        resolve();
-      }, 3000);
-    });
+      if (sendAbortFlags.current[peerId]) throw new Error('cancelled');
+
+      await sendBinaryWithRetry(fileDc, new Uint8Array([0]), {
+        abort: () => !!sendAbortFlags.current[peerId],
+      });
+      await waitAllFlushed(fileDc, 0);
+      if (sendAbortFlags.current[peerId]) throw new Error('cancelled');
+
+      let incompleteOffset = -1;
+      const result = await waitForSendComplete(
+        ctrlDc,
+        (got) => {
+          incompleteOffset = got;
+        },
+        ackTimeout,
+      );
+
+      if (result === 'ack') {
+        delete activeSendFiles.current[peerId];
+        delete resumeAttempts.current[peerId];
+        return;
+      }
+
+      if (
+        result === 'incomplete' &&
+        incompleteOffset >= 0 &&
+        incompleteOffset < file.size
+      ) {
+        resumeRound += 1;
+        offset = incompleteOffset;
+        log(L.sendResume(String(offset), String(file.size), resumeRound));
+        setTransferInfo((prev) => ({
+          ...prev,
+          [peerId]: {
+            text: t('transferRetrying', {
+              pct: String(Math.min(99, Math.floor((offset / file.size) * 100))),
+            }),
+          },
+        }));
+        continue;
+      }
+
+      throw new Error(
+        result === 'timeout'
+          ? 'timeout waiting for receiver confirmation'
+          : 'transfer incomplete',
+      );
+    }
+
+    throw new Error('max resume attempts exceeded');
   }
 
   async function readSctpBytes(pc: RTCPeerConnection) {
@@ -1313,25 +1446,33 @@ export default function ShareApp() {
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-    const _isIOS = () => {
-      const userAgent = window.navigator.userAgent.toLowerCase();
-      const win = window as Window & { MSStream?: unknown };
-      return /iphone|ipad|ipod/.test(userAgent) && !win.MSStream;
-    };
-    const isInStandaloneMode = () => {
-      const nav = navigator as Navigator & { standalone?: boolean };
-      return 'standalone' in nav && !!nav.standalone;
-    };
-    if (_isIOS() && !isInStandaloneMode()) setShowIosInstallPrompt(true);
+    const ua = window.navigator.userAgent.toLowerCase();
+    const win = window as Window & { MSStream?: unknown };
+    setDeviceHints({
+      ios: /iphone|ipad|ipod/.test(ua) && !win.MSStream,
+      android: /android/.test(ua),
+    });
 
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
 
   useEffect(() => {
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches;
-    if (isPWA) document.body.classList.add('is-pwa');
-    else document.body.classList.remove('is-pwa');
-    return () => document.body.classList.remove('is-pwa');
+    const syncStandalone = () => {
+      const nav = navigator as Navigator & { standalone?: boolean };
+      const standalone =
+        window.matchMedia('(display-mode: standalone)').matches ||
+        ('standalone' in nav && !!nav.standalone);
+      setIsStandalone(standalone);
+      if (standalone) document.body.classList.add('is-pwa');
+      else document.body.classList.remove('is-pwa');
+    };
+    syncStandalone();
+    const mq = window.matchMedia('(display-mode: standalone)');
+    mq.addEventListener('change', syncStandalone);
+    return () => {
+      mq.removeEventListener('change', syncStandalone);
+      document.body.classList.remove('is-pwa');
+    };
   }, []);
 
   const handleInstallClick = async () => {
@@ -1408,8 +1549,10 @@ export default function ShareApp() {
             EN
           </button>
         </div>
-        <span className={`status-pill ${connected ? 'on' : ''}`}>
-          {connected ? t('online') : t('offline')}
+        <span
+          className={`status-pill ${connected ? 'on' : ''} ${serverUnavailable ? 'err' : ''}`}
+        >
+          {connected ? t('online') : serverUnavailable ? t('serverOffline') : t('offline')}
         </span>
       </div>
 
@@ -1420,17 +1563,22 @@ export default function ShareApp() {
 
       <ShareStrip lang={lang} />
 
-      {showIOSChromeWarning && <div className="alert alert-warn">{t('iosWarningBody')}</div>}
-
-      {showIosInstallPrompt && (
-        <div className="alert alert-warn">
-          {t('iosInstallBody')}
-          <br />
-          <button type="button" onClick={() => setShowIosInstallPrompt(false)}>
-            {t('understood')}
-          </button>
+      {serverUnavailable && (
+        <div className="server-offline" role="alert">
+          <span className="server-offline-icon" aria-hidden>
+            <IconWifi />
+          </span>
+          <div className="server-offline-content">
+            <p className="server-offline-title">{t('serverOfflineTitle')}</p>
+            <p className="server-offline-body">{t('serverOfflineBody')}</p>
+            <button type="button" className="server-offline-retry" onClick={() => window.location.reload()}>
+              {t('serverOfflineRetry')}
+            </button>
+          </div>
         </div>
       )}
+
+      {showIOSChromeWarning && <div className="alert alert-warn">{t('iosWarningBody')}</div>}
 
       <section className="you-block">
         <p className="you-label">{t('youAre')}</p>
@@ -1494,6 +1642,10 @@ export default function ShareApp() {
               const pct = total > 0 ? (value / total) * 100 : 0;
               const peerLabel = dn(p.name);
               const peerDevice = normalizeDeviceKind(p.device);
+              const isQueuedSend = pendingSendPeerId === p.id;
+              const canPickFile =
+                connected && !!myName.trim() && !isSending && !isReceiving && !isQueuedSend;
+              const showConnectSpinner = isConnecting || isQueuedSend;
 
               return (
                 <div key={p.id} className={`peer-card ${isTransferring ? 'is-busy' : ''}`}>
@@ -1515,26 +1667,45 @@ export default function ShareApp() {
                     onChange={(e) => handleFileSelect(e, p.id)}
                     id={`file-input-${p.id}`}
                     className="hidden-file-input"
+                    disabled={!canPickFile}
                   />
 
-                  <button
-                    type="button"
-                    className={`btn-send btn-send-icon${isSending ? ' is-sending' : ''}${isReceiving ? ' is-receiving' : ''}`}
-                    onClick={() => sendToPeer(p.id)}
-                    disabled={!connected || !myName.trim() || isConnecting || isSending || isReceiving}
-                  >
-                    {isConnecting ? (
-                      <>
-                        <IconSpinner size={18} />
-                        <span>{t('connecting')}</span>
-                      </>
-                    ) : (
-                      <>
-                        <IconUpload size={20} />
-                        <span>{t('sendFileBtn')}</span>
-                      </>
-                    )}
-                  </button>
+                  {canPickFile ? (
+                    <label
+                      htmlFor={`file-input-${p.id}`}
+                      className={`btn-send btn-send-icon${isSending ? ' is-sending' : ''}${isReceiving ? ' is-receiving' : ''}`}
+                      onPointerDown={() => ensureConnection(p.id)}
+                    >
+                      {showConnectSpinner ? (
+                        <>
+                          <IconSpinner size={18} />
+                          <span>{t('connecting')}</span>
+                        </>
+                      ) : (
+                        <>
+                          <IconUpload size={20} />
+                          <span>{t('sendFileBtn')}</span>
+                        </>
+                      )}
+                    </label>
+                  ) : (
+                    <span
+                      className={`btn-send btn-send-icon is-disabled${isSending ? ' is-sending' : ''}${isReceiving ? ' is-receiving' : ''}`}
+                      aria-disabled="true"
+                    >
+                      {showConnectSpinner ? (
+                        <>
+                          <IconSpinner size={18} />
+                          <span>{t('connecting')}</span>
+                        </>
+                      ) : (
+                        <>
+                          <IconUpload size={20} />
+                          <span>{t('sendFileBtn')}</span>
+                        </>
+                      )}
+                    </span>
+                  )}
 
                   {isTransferring && (
                     <div className="transfer-block">
@@ -1658,18 +1829,30 @@ export default function ShareApp() {
         <p className="how-note">{t('stepReceive')}</p>
       </section>
 
-      <SiteFooter
-        lang={lang}
-        appMeta={<SiteFooterAppMeta lang={lang} version={version} shortId={shortId || undefined} />}
-      >
-        {showInstallButton && (
-          <button type="button" className="footer-link" onClick={handleInstallClick}>
-            {t('installBtn')}
-          </button>
+      <section className="app-extras">
+        {!isStandalone && (
+          <div className="pwa-hint">
+            <p className="pwa-hint-title">{t('pwaTitle')}</p>
+            <p className="pwa-hint-body">{t('pwaBody')}</p>
+            {deviceHints.ios ? (
+              <p className="pwa-hint-steps">{t('pwaIosSteps')}</p>
+            ) : deviceHints.android ? (
+              <p className="pwa-hint-steps">{t('pwaAndroidHint')}</p>
+            ) : (
+              <p className="pwa-hint-steps">{t('pwaDesktopHint')}</p>
+            )}
+            {showInstallButton && (
+              <button type="button" className="pwa-install-btn" onClick={handleInstallClick}>
+                {t('installBtn')}
+              </button>
+            )}
+          </div>
         )}
-        <button type="button" className="footer-link" onClick={() => setShowLogs(!showLogs)}>
-          {showLogs ? t('hideLogs') : t('showDetails')}
-        </button>
+        <div className="app-extras-actions">
+          <button type="button" className="footer-link" onClick={() => setShowLogs(!showLogs)}>
+            {showLogs ? t('hideLogs') : t('showDetails')}
+          </button>
+        </div>
         {showLogs && (
           <div className="logs-panel">
             {messages.map((m, i) => (
@@ -1680,7 +1863,12 @@ export default function ShareApp() {
             <div ref={messagesEndRef} />
           </div>
         )}
-      </SiteFooter>
+      </section>
+
+      <SiteFooter
+        lang={lang}
+        appMeta={<SiteFooterAppMeta lang={lang} version={version} shortId={shortId || undefined} />}
+      />
     </div>
   );
 }

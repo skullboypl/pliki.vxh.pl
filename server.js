@@ -13,7 +13,6 @@ const dev = process.env.NODE_ENV !== 'production';
 const buildIdPath = path.join(__dirname, '.next', 'BUILD_ID');
 
 const readBuildId = () => {
-  if (dev) return 'dev';
   try {
     return fs.readFileSync(buildIdPath, 'utf8').trim();
   } catch {
@@ -21,7 +20,8 @@ const readBuildId = () => {
   }
 };
 
-const appBuildId = readBuildId();
+/** Unique per process — dev HMR miss / stale tab gets one auto-reload via AppUpdateCheck. */
+const appBuildId = dev ? `dev-${Date.now().toString(36)}` : readBuildId();
 const appVersion = packageJson.version;
 
 if (!dev && !fs.existsSync(buildIdPath)) {

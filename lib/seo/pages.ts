@@ -482,21 +482,23 @@ export function getAllStaticParams() {
 export function getHubLabels(lang: SeoLang) {
   return lang === 'pl'
     ? {
-        title: 'Wyślij plik w sieci WiFi: poradniki i funkcje | pliki.vxh.pl',
+        title: 'Wyślij plik w WiFi bez aplikacji — poradniki | pliki.vxh.pl',
         description:
-          'Przesyłaj pliki między telefonem a komputerem w LAN. Poradniki: WiFi, P2P, iPhone, duże filmy, biuro, prywatność.',
-        h1: 'Poradniki: wysyłanie plików w WiFi',
-        intro: 'Wybierz temat lub od razu uruchom aplikację do transferu P2P w sieci lokalnej.',
+          'Przesyłaj pliki w sieci lokalnej (LAN) między telefonem a komputerem — bez instalacji aplikacji. Poradniki: WiFi, P2P, iPhone, duże pliki, biuro, prywatność.',
+        h1: 'Poradniki: wysyłanie plików w sieci lokalnej',
+        intro:
+          'Transfer plików w tej samej sieci WiFi, bez chmury i bez aplikacji. Wybierz temat lub od razu uruchom pliki.vxh.pl.',
         openApp: 'Otwórz aplikację',
         allTopics: 'Wszystkie tematy',
         langSwitch: 'English version',
       }
     : {
-        title: 'Send files over WiFi: guides and features | pliki.vxh.pl',
+        title: 'Send files on WiFi without an app — guides | pliki.vxh.pl',
         description:
-          'Transfer files between phone and PC on LAN, Guides: WiFi, P2P, iPhone, large videos, office, privacy.',
-        h1: 'Guides: sending files over WiFi',
-        intro: 'Pick a topic or open the app for P2P transfer on your local network.',
+          'Transfer files on your local network (LAN) between phone and PC — no app install. Guides: WiFi, P2P, iPhone, large files, office, privacy.',
+        h1: 'Guides: local network file transfer',
+        intro:
+          'Send files on the same WiFi without cloud or app install. Pick a topic or open pliki.vxh.pl.',
         openApp: 'Open the app',
         allTopics: 'All topics',
         langSwitch: 'Wersja polska',
