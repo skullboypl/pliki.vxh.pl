@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import { AUTHOR_SOCIALS, authorSocialAria } from '@/lib/authorSocials';
+import { reviewsUrl } from '@/lib/seo/reviews';
 import { GITHUB_REPO_URL, type SeoLang } from '@/lib/seo/site';
 import '@/styles/site-footer.css';
 
 const STACK = ['Next.js', 'React', 'TypeScript', 'Socket.io', 'WebRTC'] as const;
 
 const labels = {
-  pl: { projectBy: 'Projekt:', guides: 'Poradniki', github: 'Kod na GitHubie' },
-  en: { projectBy: 'Project by', guides: 'Guides', github: 'View on GitHub' },
+  pl: { projectBy: 'Projekt:', guides: 'Poradniki', reviews: 'Opinie', github: 'Kod na GitHubie' },
+  en: { projectBy: 'Project by', guides: 'Guides', reviews: 'Reviews', github: 'View on GitHub' },
 };
 
 function SocialIcon({ id }: { id: string }) {
@@ -150,6 +151,8 @@ export function SiteFooterAppMeta({
   return (
     <>
       <Link href={lang === 'pl' ? '/pl' : '/en'}>{t.guides}</Link>
+      {' · '}
+      <Link href={reviewsUrl(lang)}>{t.reviews}</Link>
       {' · '}
       pliki.vxh.pl · v{version}
       {shortId ? ` · #${shortId}` : ''}

@@ -387,12 +387,12 @@ const MESSAGES = {
     sendToDevice: 'Urządzenie w sieci',
     dropOverlayTitle: 'Przeciągasz plik',
     dropOverlayHint: 'Upuść plik w oknie aplikacji',
-    dropOverlayHintOne: 'Puść gdziekolwiek — wyśle do: {name}',
-    dropOverlayHintMany: 'Kilka urządzeń — upuść plik na wybraną kartę poniżej',
+    dropOverlayHintOne: 'Puść gdziekolwiek. Wyśle do: {name}',
+    dropOverlayHintMany: 'Kilka urządzeń. Upuść plik na wybraną kartę poniżej.',
     dropOverlayOnDevice: 'Puść na: {name}',
-    dropOverlayNoDevices: 'Brak wolnych urządzeń — poczekaj na połączenie',
-    dropOverlayNeedName: 'Ustaw imię powyżej, potem upuść pliki',
-    dropNeedConnection: 'Brak połączenia z serwisem — odśwież stronę',
+    dropOverlayNoDevices: 'Brak dostępnych urządzeń. Poczekaj na połączenie.',
+    dropOverlayNeedName: 'Ustaw imię powyżej, potem upuść pliki.',
+    dropNeedConnection: 'Brak połączenia z serwisem. Odśwież stronę.',
     dropPeerBusy: 'To urządzenie właśnie wysyła lub odbiera plik',
     dropNoDevices: 'Brak urządzeń gotowych do wysyłki',
     dropPickDevice: 'Upuść plik na kartę urządzenia (nie na przyciemnione tło)',
@@ -543,12 +543,12 @@ const MESSAGES = {
     sendToDevice: 'Device on network',
     dropOverlayTitle: 'Dragging a file',
     dropOverlayHint: 'Drop the file in the app window',
-    dropOverlayHintOne: 'Drop anywhere — sends to: {name}',
-    dropOverlayHintMany: 'Several devices — drop the file on the card below',
+    dropOverlayHintOne: 'Drop anywhere. Sends to: {name}',
+    dropOverlayHintMany: 'Several devices. Drop the file on a card below.',
     dropOverlayOnDevice: 'Drop on: {name}',
-    dropOverlayNoDevices: 'No available devices — wait for a connection',
-    dropOverlayNeedName: 'Set your name above, then drop files',
-    dropNeedConnection: 'Not connected to the service — refresh the page',
+    dropOverlayNoDevices: 'No available devices. Wait for a connection.',
+    dropOverlayNeedName: 'Set your name above, then drop files.',
+    dropNeedConnection: 'Not connected to the service. Refresh the page.',
     dropPeerBusy: 'That device is busy sending or receiving',
     dropNoDevices: 'No devices ready to receive',
     dropPickDevice: 'Drop the file on a device card (not on the dimmed area)',
@@ -3297,6 +3297,9 @@ export default function ShareApp() {
 
       <section
         className={`devices-block${fileDrop.active && fileDropReady && peers.some((p) => canSendToPeer(p.id)) ? ' is-drop-zone' : ''}${fileDrop.active && peers.filter((p) => canSendToPeer(p.id)).length > 1 ? ' is-drop-zone--pick' : ''}`}
+        {...(fileDrop.active && fileDropReady
+          ? fileDrop.getDevicesZoneHandlers()
+          : {})}
       >
         <h2 className="section-heading">{t('devicesTitle')}</h2>
         {peers.length ? (
@@ -3466,6 +3469,7 @@ export default function ShareApp() {
             onPreview={openPreview}
             onZipList={openZipList}
             onDelete={deleteItem}
+            onDeleteBundle={(ids) => removeDownloadLinksByIds(ids)}
             onDeleteAll={() => setDeleteAllConfirmOpen(true)}
             deleteAllLabel={t('receivedDeleteAll')}
           />

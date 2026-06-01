@@ -117,6 +117,12 @@ export function useFileDrop({
       armDragUi();
     };
 
+    /** Block the browser from opening/navigating to dropped files (capture = always runs). */
+    const onDropPreventNav = (e: DragEvent) => {
+      if (!dragHasFiles(e)) return;
+      e.preventDefault();
+    };
+
     const onEnd = () => {
       resetDragUi();
     };
@@ -132,6 +138,7 @@ export function useFileDrop({
     window.addEventListener('dragenter', onEnter, true);
     window.addEventListener('dragleave', onLeave, true);
     window.addEventListener('dragover', onOver, true);
+    window.addEventListener('drop', onDropPreventNav, true);
     window.addEventListener('dragend', onEnd, true);
     window.addEventListener('pagehide', onEnd);
     document.addEventListener('visibilitychange', onVisibility);
@@ -140,6 +147,7 @@ export function useFileDrop({
       window.removeEventListener('dragenter', onEnter, true);
       window.removeEventListener('dragleave', onLeave, true);
       window.removeEventListener('dragover', onOver, true);
+      window.removeEventListener('drop', onDropPreventNav, true);
       window.removeEventListener('dragend', onEnd, true);
       window.removeEventListener('pagehide', onEnd);
       document.removeEventListener('visibilitychange', onVisibility);
@@ -147,16 +155,18 @@ export function useFileDrop({
     };
   }, [armDragUi, resetDragUi]);
 
-  const getBackdropHandlers = useCallback(
+  const getDropZoneHandlers = useCallback(
     () => ({
       onDragEnter: (e: React.DragEvent) => {
         if (!dragHasFiles(e)) return;
         e.preventDefault();
+        e.stopPropagation();
         armDragUi();
       },
       onDragOver: (e: React.DragEvent) => {
         if (!dragHasFiles(e)) return;
         e.preventDefault();
+        e.stopPropagation();
         armDragUi();
         const eligible = optsRef.current
           .getEligiblePeers()
@@ -178,6 +188,10 @@ export function useFileDrop({
     }),
     [armDragUi, processFiles],
   );
+
+  const getBackdropHandlers = getDropZoneHandlers;
+
+  const getDevicesZoneHandlers = getDropZoneHandlers;
 
   const getPeerDropHandlers = useCallback(
     (peerId: string) => ({
@@ -221,5 +235,6 @@ export function useFileDrop({
     hoverPeerId,
     getPeerDropHandlers,
     getBackdropHandlers,
+    getDevicesZoneHandlers,
   };
 }

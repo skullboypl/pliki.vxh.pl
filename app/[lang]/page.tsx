@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getHubLabels, SEO_PAGES, getSlug } from '@/lib/seo/pages';
+import SeoFeaturesStrip from '@/components/seo/SeoFeaturesStrip';
+import SeoTopicsHub from '@/components/seo/SeoTopicsHub';
+import { getHubLabels } from '@/lib/seo/pages';
+import { getHubSeoMeta } from '@/lib/seo/pageMeta';
 import { buildHubMetadata, jsonLdWebPage } from '@/lib/seo/metadata';
 import { hubUrl, isSeoLang, type SeoLang } from '@/lib/seo/site';
 
@@ -14,8 +17,7 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { lang } = await params;
   if (!isSeoLang(lang)) return {};
-  const labels = getHubLabels(lang);
-  return buildHubMetadata(lang, labels.title, labels.description);
+  return buildHubMetadata(lang);
 }
 
 export default async function SeoHubPage({ params }: Props) {
@@ -23,7 +25,7 @@ export default async function SeoHubPage({ params }: Props) {
   if (!isSeoLang(lang)) notFound();
   const labels = getHubLabels(lang);
   const otherLang: SeoLang = lang === 'pl' ? 'en' : 'pl';
-  const jsonLd = jsonLdWebPage(lang, labels.h1, labels.description, hubUrl(lang));
+  const jsonLd = jsonLdWebPage(lang, labels.h1, getHubSeoMeta(lang).description, hubUrl(lang));
 
   return (
     <>
@@ -44,22 +46,17 @@ export default async function SeoHubPage({ params }: Props) {
         </Link>
         <span className="seo-cta-hint">
           {lang === 'pl'
-            ? 'Ta sama sieć WiFi na dwóch urządzeniach.'
-            : 'Same WiFi on two devices.'}
+            ? 'Ta sama sieć WiFi na dwóch urządzeniach. HTTPS lub localhost.'
+            : 'Same WiFi on two devices. HTTPS or localhost.'}
         </span>
       </div>
-      <h2 className="seo-hub-heading">{labels.allTopics}</h2>
-      <ul className="seo-topics">
-        {SEO_PAGES.map((page) => (
-          <li key={page.id}>
-            <Link href={`/${lang}/${getSlug(page, lang)}`} className="seo-topic-card">
-              <strong>{page.h1[lang]}</strong>
-              <span>{page.description[lang]}</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      <SeoFeaturesStrip lang={lang} />
+      <SeoTopicsHub lang={lang} heading={labels.allTopics} />
       <p className="seo-footer-links">
+        <Link href={lang === 'pl' ? '/reviews' : '/en/reviews'}>
+          {lang === 'pl' ? 'Opinie użytkowników' : 'User reviews'}
+        </Link>
+        {' · '}
         <Link href={`/${otherLang}`}>{labels.langSwitch}</Link>
       </p>
     </>

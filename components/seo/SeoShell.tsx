@@ -11,12 +11,14 @@ type Props = {
 const nav = {
   pl: {
     home: 'Poradniki',
+    reviews: 'Opinie',
     app: 'Wyślij plik',
     pl: 'Polski',
     en: 'English',
   },
   en: {
     home: 'Guides',
+    reviews: 'Reviews',
     app: 'Send files',
     pl: 'Polski',
     en: 'English',
@@ -31,10 +33,14 @@ export default function SeoShell({ lang, children }: Props) {
     <div className="seo-page">
       <header className="seo-header">
         <Link href={`/${lang}`} className="seo-logo">
-          pliki.vxh.pl
+          <span>pliki.vxh.pl</span>
+          <span className="seo-logo__tagline">
+            {lang === 'pl' ? 'Pliki w WiFi, bez chmury' : 'Files on WiFi, no cloud'}
+          </span>
         </Link>
         <nav className="seo-nav" aria-label={lang === 'pl' ? 'Nawigacja' : 'Navigation'}>
           <Link href={`/${lang}`}>{t.home}</Link>
+          <Link href={lang === 'pl' ? '/reviews' : '/en/reviews'}>{t.reviews}</Link>
           <Link href="/" className="seo-nav-cta">
             {t.app}
           </Link>

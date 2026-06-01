@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import SeoTopicIcon from '@/components/seo/SeoTopicIcon';
+import SeoTopicCard from '@/components/seo/SeoTopicCard';
 import {
   SEO_PAGES,
   findPageBySlug,
@@ -8,8 +10,9 @@ import {
   getSlug,
   getAlternateSlug,
 } from '@/lib/seo/pages';
-import { buildPageMetadata, jsonLdWebPage } from '@/lib/seo/metadata';
-import { isSeoLang, pageUrl, type SeoLang } from '@/lib/seo/site';
+import { getPageSeoMeta } from '@/lib/seo/pageMeta';
+import { buildPageMetadata, jsonLdArticle, jsonLdBreadcrumb } from '@/lib/seo/metadata';
+import { hubUrl, isSeoLang, pageUrl, SITE_URL, type SeoLang } from '@/lib/seo/site';
 
 type Props = { params: Promise<{ lang: string; slug: string }> };
 
@@ -34,7 +37,12 @@ export default async function SeoArticlePage({ params }: Props) {
 
   const otherLang: SeoLang = lang === 'pl' ? 'en' : 'pl';
   const url = pageUrl(lang, slug);
-  const jsonLd = jsonLdWebPage(lang, page.h1[lang], page.description[lang], url);
+  const articleLd = jsonLdArticle(page, lang);
+  const breadcrumbLd = jsonLdBreadcrumb(lang, [
+    { name: 'pliki.vxh.pl', url: SITE_URL },
+    { name: lang === 'pl' ? 'Poradniki' : 'Guides', url: hubUrl(lang) },
+    { name: page.h1[lang], url },
+  ]);
 
   const related = SEO_PAGES.filter((p) => p.id !== page.id).slice(0, 6);
 
@@ -42,7 +50,7 @@ export default async function SeoArticlePage({ params }: Props) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify([articleLd, breadcrumbLd]) }}
       />
       <article>
         <nav className="seo-breadcrumb" aria-label="Breadcrumb">
@@ -52,8 +60,15 @@ export default async function SeoArticlePage({ params }: Props) {
           <span>/</span>
           <span>{page.h1[lang]}</span>
         </nav>
-        <h1>{page.h1[lang]}</h1>
-        <p className="seo-lead">{page.description[lang]}</p>
+        <header className="seo-article-head">
+          <span className="seo-article-head__icon" aria-hidden>
+            <SeoTopicIcon id={page.icon} size={28} />
+          </span>
+          <div className="seo-article-head__text">
+            <h1>{page.h1[lang]}</h1>
+            <p className="seo-lead">{page.description[lang]}</p>
+          </div>
+        </header>
         {page.sections[lang].map((section) => (
           <section key={section.title} className="seo-section">
             <h2>{section.title}</h2>
@@ -72,10 +87,10 @@ export default async function SeoArticlePage({ params }: Props) {
         </div>
         <nav className="seo-related" aria-label={lang === 'pl' ? 'Powiązane tematy' : 'Related topics'}>
           <h2>{lang === 'pl' ? 'Zobacz też' : 'See also'}</h2>
-          <ul>
+          <ul className="seo-related-topics">
             {related.map((r) => (
               <li key={r.id}>
-                <Link href={`/${lang}/${getSlug(r, lang)}`}>{r.h1[lang]}</Link>
+                <SeoTopicCard page={r} lang={lang} />
               </li>
             ))}
           </ul>

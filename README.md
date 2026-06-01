@@ -46,11 +46,26 @@ Install to your home screen for a focused, app-like UI (recommended on iPhone vi
 
 ![pliki.vxh.pl — PWA standalone (Polski)](docs/assets/PWAPL.png)
 
-**SEO guides**  
-Static help pages in Polish and English at `/pl` and `/en`.
-
 **Share the app**  
 Quick share via WhatsApp, Telegram, X, email, or copy link.
+
+### Public pages: guides & reviews (not a second app)
+
+The **file-sending UI lives only at `/`** (root). Everything else is **static marketing/help** so people can find the project on Google and understand it before opening the app — not extra products, not login walls, not cloud storage.
+
+| Path | Purpose |
+|------|---------|
+| [`/pl`](https://pliki.vxh.pl/pl), [`/en`](https://pliki.vxh.pl/en) | **Guides hub** — topics (WiFi transfer, iPhone, PWA, bundles, drag & drop, …) with search, categories, and sort. Helps SEO and answers common questions without bloating the main UI. |
+| `/pl/{slug}`, `/en/{slug}` | **Individual guide articles** — same content idea, one topic per URL for search engines and shared links. |
+| [`/reviews`](https://pliki.vxh.pl/reviews), [`/en/reviews`](https://pliki.vxh.pl/en/reviews) | **Reviews** — mix of real checked feedback and extra copy written for SEO/social proof. If you’re reading this on GitHub: don’t take it personally. |
+
+Why keep them in the repo?
+
+- **Discovery** — queries like “send file over WiFi without app” should land on helpful pages, not a blank landing.
+- **Trust** — short guides and reviews explain *what* the tool does before someone tries it on two devices.
+- **Maintenance** — copy lives in `lib/seo/`; no impact on WebRTC, Socket.io, or transfer logic.
+
+If you open a PR: please don’t delete these routes thinking they’re cruft — they’re intentional. Improvements to copy and accessibility are welcome.
 
 ### How it works
 
@@ -109,9 +124,9 @@ Copy `.env.example` → `.env` for local dev (`.env` is gitignored).
 ### Project layout
 
 ```
-app/              Next.js routes (app + SEO)
-components/       UI
-lib/              WebRTC, PWA, notes, bundles, SEO
+app/              Next.js routes (`/` app, `/pl` `/en` guides, `/reviews`, …)
+components/       UI (+ `components/seo/` for static pages)
+lib/              WebRTC, PWA, notes, bundles, `lib/seo/` (guides, sitemap, reviews copy)
 server.js         Next.js + Socket.io + API
 server/           Service worker helpers
 docs/assets/      README screenshots (WEB*.png, PWA*.png)
@@ -174,11 +189,26 @@ Dodaj do ekranu początkowego — uproszczony interfejs jak aplikacja (na iPhone
 
 ![pliki.vxh.pl — PWA standalone (Polski)](docs/assets/PWAPL.png)
 
-**Poradniki SEO**  
-Statyczne strony PL/EN pod `/pl` i `/en`.
-
 **Udostępnianie**  
 WhatsApp, Telegram, X, e-mail, kopiuj link.
+
+### Strony publiczne: poradniki i opinie (to nie druga aplikacja)
+
+**Wysyłanie plików jest tylko pod `/`** (strona główna). Reszta to **statyczne poradniki / marketing**, żeby projekt dało się znaleźć w Google i zrozumieć przed uruchomieniem — bez drugiego produktu, bez logowania, bez chmury na pliki.
+
+| Ścieżka | Po co jest |
+|---------|------------|
+| [`/pl`](https://pliki.vxh.pl/pl), [`/en`](https://pliki.vxh.pl/en) | **Hub poradników** — tematy (WiFi, iPhone, PWA, paczki, drag and drop, …), wyszukiwarka, kategorie, sortowanie. SEO + odpowiedzi na FAQ bez zaśmiecania głównego UI. |
+| `/pl/{slug}`, `/en/{slug}` | **Artykuły** — jeden temat = jeden URL pod wyszukiwarki i linki zewnętrzne. |
+| [`/reviews`](https://pliki.vxh.pl/reviews), [`/en/reviews`](https://pliki.vxh.pl/en/reviews) | **Opinie** — sprawdzone recenzje użytkowników plus treści pod SEO. Czytając na GitHubie: nie bierzcie tego do siebie. |
+
+Dlaczego to jest w repozytorium?
+
+- **Widoczność** — ktoś szuka „wyślij plik wifi bez aplikacji” powinien trafić na sensowną stronę, nie pusty landing.
+- **Zaufanie** — krótki poradnik i opinie tłumaczą, *co* robi narzędzie, zanim ktoś odpali je na dwóch urządzeniach.
+- **Kod** — treści w `lib/seo/`; **nie** mieszają się z WebRTC, Socket.io ani logiką transferu.
+
+PR-y mile widziane, ale prosimy **nie usuwać** tych tras „bo wyglądają na zbędne” — są celowe. Chętnie przyjmujemy poprawki tekstów i dostępności.
 
 ### Jak to działa
 
@@ -237,9 +267,9 @@ Lokalnie: `.env.example` → `.env` (`.env` jest w gitignore).
 ### Struktura
 
 ```
-app/              Trasy Next.js
-components/       UI
-lib/              WebRTC, PWA, notatki, paczki, SEO
+app/              Trasy Next.js (`/` aplikacja, `/pl` `/en` poradniki, `/reviews`, …)
+components/       UI (+ `components/seo/` strony statyczne)
+lib/              WebRTC, PWA, notatki, paczki, `lib/seo/` (poradniki, sitemap, opinie)
 server.js         Next.js + Socket.io
 server/           Licznik, service worker
 docs/assets/      Zrzuty do README (WEB*.png, PWA*.png)

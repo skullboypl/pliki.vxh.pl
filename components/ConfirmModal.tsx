@@ -40,13 +40,13 @@ export default function ConfirmModal({
         <p id="confirm-modal-desc" className="quota-modal__text confirm-modal__text">
           {message}
         </p>
-        <div className="quota-modal__actions">
-          <button type="button" className="btn-ghost" onClick={onClose}>
+        <div className="confirm-modal__actions">
+          <button type="button" className="confirm-modal__btn confirm-modal__btn--cancel" onClick={onClose}>
             {cancelLabel}
           </button>
           <button
             type="button"
-            className={danger ? 'btn-ghost danger' : 'btn-save'}
+            className={`confirm-modal__btn ${danger ? 'confirm-modal__btn--danger' : 'confirm-modal__btn--primary'}`}
             onClick={() => {
               onConfirm();
               onClose();

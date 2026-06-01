@@ -2260,11 +2260,105 @@ button.btn-send {
 }
 
 .confirm-modal {
-  width: min(340px, 92vw);
+  width: min(360px, 92vw);
+}
+
+.confirm-modal .quota-modal__header {
+  padding: 16px 18px 12px;
+}
+
+.confirm-modal .quota-modal__title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #f3f4f6;
 }
 
 .confirm-modal__text {
-  padding-bottom: 4px;
+  margin: 0;
+  padding: 4px 18px 16px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #cbd5e1;
+}
+
+.confirm-modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px 18px 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.confirm-modal__btn {
+  flex: 1 1 calc(50% - 5px);
+  min-width: 7.5rem;
+  min-height: 44px;
+  padding: 12px 16px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.2;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.confirm-modal__btn--cancel {
+  background: #2a2a2a;
+  color: #f3f4f6;
+  border: 1px solid #4b5563;
+}
+
+.confirm-modal__btn--cancel:hover {
+  background: #353535;
+  border-color: #6b7280;
+}
+
+.confirm-modal__btn--cancel:focus-visible {
+  outline: 2px solid #6b7280;
+  outline-offset: 2px;
+}
+
+.confirm-modal__btn--danger {
+  background: #dc2626;
+  color: #fff;
+  border: 1px solid #ef4444;
+}
+
+.confirm-modal__btn--danger:hover {
+  background: #ef4444;
+  border-color: #f87171;
+}
+
+.confirm-modal__btn--danger:focus-visible {
+  outline: 2px solid #f87171;
+  outline-offset: 2px;
+}
+
+.confirm-modal__btn--primary {
+  background: #6cbe45;
+  color: #0a0a0a;
+  border: 1px solid #8ed65f;
+}
+
+.confirm-modal__btn--primary:hover {
+  background: #8ed65f;
+}
+
+.confirm-modal__btn--primary:focus-visible {
+  outline: 2px solid #8ed65f;
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .confirm-modal__actions {
+    flex-direction: column;
+  }
+
+  .confirm-modal__btn {
+    flex: none;
+    width: 100%;
+  }
 }
 
 .downloads-control {
@@ -2318,6 +2412,22 @@ button.btn-send {
   padding: 12px 14px;
   background: #111;
   border-bottom: 1px solid #1a1a1a;
+}
+
+.download-bundle-head-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.download-bundle-delete {
+  flex-shrink: 0;
+  margin-top: 2px;
+  padding: 6px 10px;
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .download-bundle.is-collapsed .download-bundle-head {
@@ -2391,16 +2501,98 @@ button.btn-send {
 }
 
 .download-bundle-body {
-  padding: 4px 10px 8px 18px;
+  padding: 2px 8px 6px 12px;
 }
 
-.download-row-nested {
-  padding: 10px 0;
-  border-top: 1px solid #161616;
+.download-bundle-body .download-row-nested {
+  padding: 5px 0;
+  border-top: 1px solid #141414;
 }
 
-.download-row-nested:first-child {
+.download-bundle-body .download-row-nested:first-child {
   border-top: none;
+  padding-top: 4px;
+}
+
+.download-bundle-body .download-row-main {
+  gap: 8px;
+  align-items: center;
+}
+
+.download-bundle-body .download-thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+}
+
+.download-bundle-body .download-thumb-text {
+  padding: 3px 4px;
+  font-size: 0.36rem;
+  line-height: 1.25;
+}
+
+.download-bundle-body .download-thumb-audio {
+  padding: 6px 4px 4px;
+}
+
+.download-bundle-body .download-thumb-audio-bar {
+  max-width: 3px;
+}
+
+.download-bundle-body .download-thumb-audio-icon {
+  bottom: 2px;
+  right: 2px;
+  transform: scale(0.85);
+}
+
+.download-bundle-body .download-thumb-zip {
+  padding: 3px 4px 2px;
+}
+
+.download-bundle-body .download-thumb-zip-badge {
+  font-size: 0.42rem;
+}
+
+.download-bundle-body .download-thumb-zip-count,
+.download-bundle-body .download-thumb-zip-name {
+  font-size: 0.38rem;
+}
+
+.download-bundle-body .new-badge {
+  font-size: 0.65rem;
+  margin-bottom: 2px;
+}
+
+.download-bundle-body .download-name {
+  font-size: 0.8rem;
+  line-height: 1.25;
+  margin-bottom: 1px;
+}
+
+.download-bundle-body .download-meta {
+  font-size: 0.7rem;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.download-bundle-body .download-btns {
+  gap: 4px;
+}
+
+.download-bundle-body .download-btns .btn-save {
+  flex: 0 1 auto;
+  padding: 5px 10px;
+  font-size: 0.75rem;
+}
+
+.download-bundle-body .download-btns .btn-ghost {
+  padding: 4px 8px;
+  font-size: 0.72rem;
+}
+
+.download-bundle-body .download-btns .btn-ghost.danger {
+  padding: 4px 7px;
+  min-width: 0;
 }
 
 .download-batch-pos {
@@ -3009,11 +3201,23 @@ body.has-dev-banner:has(.seo-page) {
     align-items: stretch;
   }
 
+  .share-app .download-bundle-body .download-row-main {
+    flex-direction: row;
+    align-items: center;
+  }
+
   .share-app .download-thumb {
     width: 100%;
     height: auto;
     aspect-ratio: 16 / 10;
     max-height: 140px;
+  }
+
+  .share-app .download-bundle-body .download-thumb {
+    width: 40px;
+    height: 40px;
+    aspect-ratio: auto;
+    max-height: none;
   }
 
   .share-app .download-btns {
@@ -3024,6 +3228,17 @@ body.has-dev-banner:has(.seo-page) {
   .share-app .download-btns .btn-ghost {
     flex: none;
     width: 100%;
+  }
+
+  .share-app .download-bundle-body .download-btns {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .share-app .download-bundle-body .download-btns .btn-save,
+  .share-app .download-bundle-body .download-btns .btn-ghost {
+    flex: 0 1 auto;
+    width: auto;
   }
 
   .share-app .lang-text {

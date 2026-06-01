@@ -39,6 +39,7 @@ type Props = {
   onPreview: (link: ReceivedFile) => void;
   onZipList?: (link: ReceivedFile) => void;
   onDelete: (id: number) => void;
+  onDeleteBundle?: (ids: number[]) => void;
   onDeleteAll?: () => void;
   deleteAllLabel?: string;
 };
@@ -57,6 +58,7 @@ const COPY = {
     sortLabel: 'Sortuj',
     fromWho: 'Od: {name}',
     saveFile: 'Zapisz plik',
+    saveFileShort: 'Zapisz',
     saveZip: 'Pobierz ZIP',
     saveAll: 'Pobierz wszystkie',
     savingZip: 'Pakowanie…',
@@ -69,6 +71,7 @@ const COPY = {
     bundleOne: 'Paczka · 1 plik',
     expand: 'Rozwiń',
     collapse: 'Zwiń',
+    deleteBundle: 'Usuń całą paczkę',
     emptyFilter: 'Brak plików dla wybranego filtra.',
   },
   en: {
@@ -84,6 +87,7 @@ const COPY = {
     sortLabel: 'Sort',
     fromWho: 'From: {name}',
     saveFile: 'Save file',
+    saveFileShort: 'Save',
     saveZip: 'Download ZIP',
     saveAll: 'Download all',
     savingZip: 'Zipping…',
@@ -96,6 +100,7 @@ const COPY = {
     bundleOne: 'Bundle · 1 file',
     expand: 'Expand',
     collapse: 'Collapse',
+    deleteBundle: 'Remove entire bundle',
     emptyFilter: 'No files match this filter.',
   },
 } as const;
@@ -249,6 +254,7 @@ export default function ReceivedFilesList({
   onPreview,
   onZipList,
   onDelete,
+  onDeleteBundle,
   onDeleteAll,
   deleteAllLabel,
 }: Props) {
@@ -347,8 +353,8 @@ export default function ReceivedFilesList({
             ) : null}
           </div>
           <div className="download-btns">
-            <button type="button" className="btn-save" onClick={() => onSave(link)}>
-              {t.saveFile}
+            <button type="button" className={`btn-save${nested ? ' btn-save-compact' : ''}`} onClick={() => onSave(link)}>
+              {nested ? t.saveFileShort : t.saveFile}
             </button>
             {isZipListable?.(link) && onZipList && zipListLabel ? (
               <button type="button" className="btn-ghost" onClick={() => void onZipList(link)}>
@@ -429,19 +435,31 @@ export default function ReceivedFilesList({
               className={`download-bundle${item.hasNew ? ' is-new' : ''}${open ? ' is-open' : ' is-collapsed'}`}
             >
               <div className="download-bundle-head">
-                <button
-                  type="button"
-                  className="download-bundle-toggle"
-                  onClick={() => toggleBundle(item.batchId)}
-                  aria-expanded={open}
-                  aria-label={open ? t.collapse : t.expand}
-                >
-                  <IconChevron open={open} />
-                  <span className="download-bundle-icon" aria-hidden>
-                    <IconFolder />
-                  </span>
-                  <span className="download-bundle-title">{title}</span>
-                </button>
+                <div className="download-bundle-head-row">
+                  <button
+                    type="button"
+                    className="download-bundle-toggle"
+                    onClick={() => toggleBundle(item.batchId)}
+                    aria-expanded={open}
+                    aria-label={open ? t.collapse : t.expand}
+                  >
+                    <IconChevron open={open} />
+                    <span className="download-bundle-icon" aria-hidden>
+                      <IconFolder />
+                    </span>
+                    <span className="download-bundle-title">{title}</span>
+                  </button>
+                  {onDeleteBundle ? (
+                    <button
+                      type="button"
+                      className="btn-ghost danger download-bundle-delete"
+                      onClick={() => onDeleteBundle(item.links.map((l) => l.id))}
+                      aria-label={t.deleteBundle}
+                    >
+                      ✕
+                    </button>
+                  ) : null}
+                </div>
                 <div className="download-bundle-meta">
                   {formatSize(item.totalSize)} · {t.fromWho.replace('{name}', displayName(item.peerName))}
                   {item.receivedAt ? (

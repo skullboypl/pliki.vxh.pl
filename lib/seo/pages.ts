@@ -1,5 +1,30 @@
 import type { SeoLang } from '@/lib/seo/site';
 
+export type SeoTopicIconId =
+  | 'wifi'
+  | 'lan'
+  | 'phone'
+  | 'cross'
+  | 'photos'
+  | 'video'
+  | 'p2p'
+  | 'speed'
+  | 'office'
+  | 'home'
+  | 'privacy'
+  | 'howto'
+  | 'faq'
+  | 'iphone'
+  | 'account'
+  | 'cloud'
+  | 'documents'
+  | 'music'
+  | 'security'
+  | 'pwa'
+  | 'drag'
+  | 'bundle'
+  | 'zip';
+
 export interface SeoSection {
   title: string;
   paragraphs: string[];
@@ -7,6 +32,7 @@ export interface SeoSection {
 
 export interface SeoPage {
   id: string;
+  icon: SeoTopicIconId;
   plSlug: string;
   enSlug: string;
   title: Record<SeoLang, string>;
@@ -19,6 +45,7 @@ export interface SeoPage {
 export const SEO_PAGES: SeoPage[] = [
   {
     id: 'send-wifi',
+    icon: 'wifi',
     plSlug: 'wyslij-plik-wifi',
     enSlug: 'send-file-wifi',
     title: {
@@ -42,7 +69,14 @@ export const SEO_PAGES: SeoPage[] = [
         {
           title: 'Jak to działa',
           paragraphs: [
-            'Otwórz pliki.vxh.pl na dwóch urządzeniach podłączonych do tej samej sieci WiFi. Wybierz odbiorcę z listy i prześlij plik. Dane idą bezpośrednio między urządzeniami (WebRTC), nie przez zewnętrzny serwer.',
+            'Otwórz pliki.vxh.pl na dwóch urządzeniach w tej samej sieci WiFi. Ustaw nick (opcjonalnie), wybierz odbiorcę z listy i wyślij jeden lub wiele plików naraz. Możesz też przeciągnąć pliki na kartę urządzenia albo upuścić je na stronie (PC i PWA).',
+            'Dane idą bezpośrednio między urządzeniami (WebRTC). Serwer pomaga tylko pokazać listę urządzeń w sieci, nie trzyma Twoich plików.',
+          ],
+        },
+        {
+          title: 'Co znajdziesz w aplikacji',
+          paragraphs: [
+            'Odebrane pliki z podglądem zdjęć, wideo, tekstu i audio. Paczki wielu plików, podgląd zawartości ZIP, zapis na dysk lub jako archiwum ZIP. Limit miejsca w przeglądarce widać na panelu przed odbiorem dużych plików.',
           ],
         },
       ],
@@ -50,7 +84,14 @@ export const SEO_PAGES: SeoPage[] = [
         {
           title: 'How it works',
           paragraphs: [
-            'Open pliki.vxh.pl on two devices on the same WiFi. Pick the receiver from the list and send. Data goes device-to-device via WebRTC, not through a file storage server.',
+            'Open pliki.vxh.pl on two devices on the same WiFi. Set a nickname (optional), pick a receiver, and send one or many files at once. You can also drag files onto a device card or drop them on the page (desktop and PWA).',
+            'Data goes device-to-device via WebRTC. The server only helps devices find each other; it does not store your files.',
+          ],
+        },
+        {
+          title: 'In the app',
+          paragraphs: [
+            'Received files with previews for images, video, text, and audio. Multi-file bundles, ZIP contents preview, save to disk or as a ZIP archive. Browser storage limits are shown before accepting very large files.',
           ],
         },
       ],
@@ -58,6 +99,7 @@ export const SEO_PAGES: SeoPage[] = [
   },
   {
     id: 'lan-transfer',
+    icon: 'lan',
     plSlug: 'przesylanie-plikow-lan',
     enSlug: 'lan-file-transfer',
     title: {
@@ -80,6 +122,7 @@ export const SEO_PAGES: SeoPage[] = [
   },
   {
     id: 'phone-pc',
+    icon: 'phone',
     plSlug: 'telefon-komputer-wifi',
     enSlug: 'phone-to-pc-wifi',
     title: {
@@ -99,6 +142,7 @@ export const SEO_PAGES: SeoPage[] = [
   },
   {
     id: 'android-iphone',
+    icon: 'cross',
     plSlug: 'android-iphone-wifi',
     enSlug: 'android-iphone-wifi',
     title: {
@@ -107,7 +151,7 @@ export const SEO_PAGES: SeoPage[] = [
     },
     description: {
       pl: 'Przesyłaj pliki między Androidem a iPhone bez AirDrop ani kabli, wspólna sieć WiFi wystarczy.',
-      en: 'Move files between Android and iPhone without AirDrop or cables. shared WiFi is enough.',
+      en: 'Move files between Android and iPhone without AirDrop or cables. Shared WiFi is enough.',
     },
     keywords: { pl: ['android iphone', 'transfer', 'wifi'], en: ['android iphone', 'transfer', 'wifi'] },
     h1: { pl: 'Android i iPhone w jednej sieci', en: 'Android and iPhone on one network' },
@@ -118,6 +162,7 @@ export const SEO_PAGES: SeoPage[] = [
   },
   {
     id: 'photos-no-cloud',
+    icon: 'photos',
     plSlug: 'zdjecia-bez-chmury',
     enSlug: 'photos-without-cloud',
     title: {
@@ -137,6 +182,7 @@ export const SEO_PAGES: SeoPage[] = [
   },
   {
     id: 'large-video',
+    icon: 'video',
     plSlug: 'duze-filmy-wifi',
     enSlug: 'large-videos-wifi',
     title: {
@@ -150,12 +196,29 @@ export const SEO_PAGES: SeoPage[] = [
     keywords: { pl: ['film', 'mov', 'mp4', 'duży plik'], en: ['video', 'mov', 'mp4', 'large file'] },
     h1: { pl: 'Duże filmy w sieci WiFi', en: 'Large videos on WiFi' },
     sections: {
-      pl: [{ title: 'Wskazówka iOS', paragraphs: ['Na iPhone Chrome ma ograniczenia, do dużych plików użyj Safari lub dodaj stronę do ekranu początkowego (PWA).'] }],
-      en: [{ title: 'iOS tip', paragraphs: ['On iPhone, Chrome is limited. Use Safari or Add to Home Screen (PWA) for large files.'] }],
+      pl: [
+        {
+          title: 'Wskazówka iOS',
+          paragraphs: [
+            'Na iPhone Chrome ma ograniczenia pamięci. Do dużych plików użyj Safari lub dodaj stronę do ekranu początkowego (PWA).',
+            'W aplikacji wideo możesz obejrzeć podgląd przed zapisaniem. Przy małym wolnym miejscu w przeglądarce pojawi się pytanie, czy odebrać mimo to.',
+          ],
+        },
+      ],
+      en: [
+        {
+          title: 'iOS tip',
+          paragraphs: [
+            'On iPhone, Chrome has memory limits. Use Safari or Add to Home Screen (PWA) for large files.',
+            'The app offers video preview before saving. When browser storage is tight, you can choose to receive anyway or free space first.',
+          ],
+        },
+      ],
     },
   },
   {
     id: 'p2p-offline',
+    icon: 'p2p',
     plSlug: 'p2p-bez-internetu',
     enSlug: 'p2p-without-internet',
     title: {
@@ -175,6 +238,7 @@ export const SEO_PAGES: SeoPage[] = [
   },
   {
     id: 'fast-wifi',
+    icon: 'speed',
     plSlug: 'szybki-transfer-wifi',
     enSlug: 'fast-wifi-transfer',
     title: {
@@ -194,6 +258,7 @@ export const SEO_PAGES: SeoPage[] = [
   },
   {
     id: 'office-lan',
+    icon: 'office',
     plSlug: 'biuro-pliki-lan',
     enSlug: 'office-lan-files',
     title: {
@@ -213,6 +278,7 @@ export const SEO_PAGES: SeoPage[] = [
   },
   {
     id: 'home-network',
+    icon: 'home',
     plSlug: 'domowa-siec-pliki',
     enSlug: 'home-network-files',
     title: {
@@ -232,6 +298,7 @@ export const SEO_PAGES: SeoPage[] = [
   },
   {
     id: 'privacy-local',
+    icon: 'privacy',
     plSlug: 'prywatnosc-lokalnie',
     enSlug: 'privacy-local-transfer',
     title: {
@@ -246,11 +313,12 @@ export const SEO_PAGES: SeoPage[] = [
     h1: { pl: 'Prywatność przy transferze', en: 'Privacy-first transfer' },
     sections: {
       pl: [{ title: 'Dane', paragraphs: ['Pliki nie są indeksowane ani udostępniane publicznie, tylko wybrany odbiorca w sieci.'] }],
-      en: [{ title: 'Your data', paragraphs: ['Files are not indexed or public. only the peer you pick on the network.'] }],
+      en: [{ title: 'Your data', paragraphs: ['Files are not indexed or public. Only the peer you pick on the network.'] }],
     },
   },
   {
     id: 'how-it-works',
+    icon: 'howto',
     plSlug: 'jak-dziala',
     enSlug: 'how-it-works',
     title: {
@@ -268,10 +336,23 @@ export const SEO_PAGES: SeoPage[] = [
         {
           title: 'Kroki',
           paragraphs: [
-            '1. Otwórz stronę na dwóch urządzeniach w tej samej WiFi.',
-            '2. Zobacz drugie urządzenie na liście.',
-            '3. Wybierz plik i wyślij.',
-            '4. Na odbiorcy plik pojawi się w „Odebrane pliki”.',
+            '1. Otwórz stronę na dwóch urządzeniach w tej samej WiFi (HTTPS lub localhost).',
+            '2. Ustaw nick albo zostaw losowy. Zobacz drugie urządzenie na liście.',
+            '3. Wyślij: zielony przycisk (wiele plików naraz), przeciągnij na kartę urządzenia lub upuść na stronie.',
+            '4. Na odbiorcy pliki trafiają do „Odebrane pliki”. Możesz je podejrzeć, zapisać na dysk lub usunąć z listy.',
+          ],
+        },
+        {
+          title: 'Paczki i podgląd',
+          paragraphs: [
+            'Wiele plików z jednej wysyłki grupuje się w paczkę. W paczce możesz zapisać wszystko osobno lub jako jeden ZIP.',
+            'ZIP z listy możesz podejrzeć bez rozpakowywania. Zdjęcia, tekst, audio i wideo mają podgląd w aplikacji.',
+          ],
+        },
+        {
+          title: 'Po odebraniu',
+          paragraphs: [
+            'Odebrane pliki są w pamięci przeglądarki (OPFS). Znikają po zamknięciu karty lub aplikacji PWA, nie po odświeżeniu strony (F5).',
           ],
         },
       ],
@@ -279,10 +360,23 @@ export const SEO_PAGES: SeoPage[] = [
         {
           title: 'Steps',
           paragraphs: [
-            '1. Open the page on two devices on the same WiFi.',
-            '2. See the other device in the list.',
-            '3. Pick a file and send.',
-            '4. On the receiver, the file appears under “Received files”.',
+            '1. Open the page on two devices on the same WiFi (HTTPS or localhost).',
+            '2. Set a nickname or keep the random one. See the other device in the list.',
+            '3. Send via the green button (multiple files), drag onto a device card, or drop on the page.',
+            '4. On the receiver, files appear under “Received files”. Preview, save to disk, or remove from the list.',
+          ],
+        },
+        {
+          title: 'Bundles and preview',
+          paragraphs: [
+            'Multiple files from one send are grouped as a bundle. Save all separately or as one ZIP.',
+            'ZIP archives can be browsed without extracting. Images, text, audio, and video have in-app preview.',
+          ],
+        },
+        {
+          title: 'After receiving',
+          paragraphs: [
+            'Received files live in browser storage (OPFS). They disappear when you close the tab or PWA, not when you refresh (F5).',
           ],
         },
       ],
@@ -290,6 +384,7 @@ export const SEO_PAGES: SeoPage[] = [
   },
   {
     id: 'faq',
+    icon: 'faq',
     plSlug: 'faq',
     enSlug: 'faq',
     title: {
@@ -306,27 +401,72 @@ export const SEO_PAGES: SeoPage[] = [
       pl: [
         {
           title: 'Czy potrzebuję internetu?',
-          paragraphs: ['Potrzebujesz sieci lokalnej (WiFi). Pliki nie muszą wychodzić do internetu, ale strona musi być załadowana w przeglądarce.'],
+          paragraphs: [
+            'Potrzebujesz sieci lokalnej (WiFi). Pliki nie muszą wychodzić do internetu, ale strona musi być wcześniej załadowana w przeglądarce (HTTPS).',
+          ],
         },
         {
           title: 'Dlaczego nie widzę drugiego urządzenia?',
-          paragraphs: ['Sprawdź, czy oba są w tej samej sieci WiFi (nie gość odcięty od LAN).'],
+          paragraphs: [
+            'Sprawdź tę samą sieć WiFi (sieć gościa często jest odcięta). Upewnij się, że serwis jest online (zielony status połączenia).',
+          ],
+        },
+        {
+          title: 'Czy mogę wysłać wiele plików naraz?',
+          paragraphs: [
+            'Tak. Przycisk „Wybierz pliki” pozwala zaznaczyć wiele pozycji. Na komputerze możesz też przeciągnąć pliki na urządzenie lub upuścić na stronie.',
+          ],
+        },
+        {
+          title: 'Gdzie znikają odebrane pliki?',
+          paragraphs: [
+            'Po zamknięciu karty lub aplikacji PWA. Odświeżenie strony (F5) ich nie kasuje, dopóki nie zamkniesz całej karty.',
+          ],
+        },
+        {
+          title: 'Komunikat o małym miejscu w przeglądarce',
+          paragraphs: [
+            'Przeglądarka ma limit miejsca na witrynę. Panel pokazuje zajęcie. Możesz usunąć stare odebrane pliki albo spróbować odebrać mimo to.',
+          ],
         },
       ],
       en: [
         {
           title: 'Do I need the internet?',
-          paragraphs: ['You need a local network (WiFi). Files need not leave your LAN, but the page must load in the browser.'],
+          paragraphs: [
+            'You need a local network (WiFi). Files need not leave your LAN, but the page must be loaded in the browser over HTTPS.',
+          ],
         },
         {
           title: 'Why is the other device missing?',
-          paragraphs: ['Check both devices are on the same WiFi (guest networks may be isolated).'],
+          paragraphs: [
+            'Check the same WiFi (guest networks are often isolated). Make sure the service connection is online (green status).',
+          ],
+        },
+        {
+          title: 'Can I send multiple files?',
+          paragraphs: [
+            'Yes. The file picker accepts multiple items. On desktop you can also drag onto a device or drop on the page.',
+          ],
+        },
+        {
+          title: 'When do received files disappear?',
+          paragraphs: [
+            'When you close the browser tab or PWA. Refreshing (F5) does not clear them until the tab is closed.',
+          ],
+        },
+        {
+          title: 'Low browser storage warning',
+          paragraphs: [
+            'Browsers cap per-site storage. The panel shows usage. Delete old received files or try receiving anyway.',
+          ],
         },
       ],
     },
   },
   {
     id: 'iphone-safari',
+    icon: 'iphone',
     plSlug: 'iphone-safari',
     enSlug: 'iphone-safari',
     title: {
@@ -346,6 +486,7 @@ export const SEO_PAGES: SeoPage[] = [
   },
   {
     id: 'no-account',
+    icon: 'account',
     plSlug: 'bez-konta',
     enSlug: 'no-account',
     title: {
@@ -365,6 +506,7 @@ export const SEO_PAGES: SeoPage[] = [
   },
   {
     id: 'vs-cloud',
+    icon: 'cloud',
     plSlug: 'porownanie-chmura',
     enSlug: 'vs-cloud-storage',
     title: {
@@ -384,6 +526,7 @@ export const SEO_PAGES: SeoPage[] = [
   },
   {
     id: 'documents-pdf',
+    icon: 'documents',
     plSlug: 'dokumenty-pdf-wifi',
     enSlug: 'documents-pdf-wifi',
     title: {
@@ -397,12 +540,27 @@ export const SEO_PAGES: SeoPage[] = [
     keywords: { pl: ['pdf', 'dokumenty', 'zip'], en: ['pdf', 'documents', 'zip'] },
     h1: { pl: 'Dokumenty w sieci WiFi', en: 'Documents on WiFi' },
     sections: {
-      pl: [{ title: 'Formaty', paragraphs: ['Dowolny typ pliku, aplikacja nie zmienia rozszerzenia ani jakości.'] }],
-      en: [{ title: 'Formats', paragraphs: ['Any file type, the app does not change extension or quality.'] }],
+      pl: [
+        {
+          title: 'Formaty',
+          paragraphs: [
+            'PDF, DOCX, ZIP i inne typy bez zmiany jakości. Archiwum ZIP możesz podejrzeć z listy odebranych (przycisk „Zawartość”) bez rozpakowania na dysku.',
+          ],
+        },
+      ],
+      en: [
+        {
+          title: 'Formats',
+          paragraphs: [
+            'PDF, DOCX, ZIP, and more without recompression. ZIP archives can be browsed from the received list (“Contents”) without extracting to disk.',
+          ],
+        },
+      ],
     },
   },
   {
     id: 'music-files',
+    icon: 'music',
     plSlug: 'muzyka-pliki-wifi',
     enSlug: 'music-files-wifi',
     title: {
@@ -416,12 +574,27 @@ export const SEO_PAGES: SeoPage[] = [
     keywords: { pl: ['muzyka', 'mp3', 'audio'], en: ['music', 'mp3', 'audio'] },
     h1: { pl: 'Pliki audio w LAN', en: 'Audio files on LAN' },
     sections: {
-      pl: [{ title: 'Jakość', paragraphs: ['Plik dociera bit w bit, bez kompresji po stronie serwisu.'] }],
-      en: [{ title: 'Quality', paragraphs: ['Files arrive bit-for-bit, no recompression by the service.'] }],
+      pl: [
+        {
+          title: 'Jakość i podgląd',
+          paragraphs: [
+            'MP3, WAV, FLAC i inne formaty docierają bit w bit. Na liście odebranych widać miniaturę z falą dźwiękową, a w podglądzie możesz odsłuchać plik przed zapisem.',
+          ],
+        },
+      ],
+      en: [
+        {
+          title: 'Quality and preview',
+          paragraphs: [
+            'MP3, WAV, FLAC, and more arrive bit-for-bit. The list shows a waveform thumb; preview lets you listen before saving.',
+          ],
+        },
+      ],
     },
   },
   {
     id: 'security-p2p',
+    icon: 'security',
     plSlug: 'bezpieczenstwo-p2p',
     enSlug: 'p2p-security',
     title: {
@@ -441,6 +614,7 @@ export const SEO_PAGES: SeoPage[] = [
   },
   {
     id: 'pwa-install',
+    icon: 'pwa',
     plSlug: 'aplikacja-pwa',
     enSlug: 'pwa-install',
     title: {
@@ -454,8 +628,134 @@ export const SEO_PAGES: SeoPage[] = [
     keywords: { pl: ['pwa', 'ekran początkowy', 'ios'], en: ['pwa', 'home screen', 'ios'] },
     h1: { pl: 'Aplikacja na ekranie', en: 'App on your home screen' },
     sections: {
-      pl: [{ title: 'iOS', paragraphs: ['Otwórz w Safari, wybierz Udostępnij i Dodaj do ekranu początkowego. Szybszy dostęp do wysyłania plików.'] }],
-      en: [{ title: 'iOS', paragraphs: ['Open in Safari, tap Share and Add to Home Screen. Quicker access to file sending.'] }],
+      pl: [
+        {
+          title: 'Telefon (iOS)',
+          paragraphs: [
+            'Safari → Udostępnij → Dodaj do ekranu początkowego. PWA ma więcej miejsca na duże pliki i stabilniejszy odbiór niż zwykła karta.',
+          ],
+        },
+        {
+          title: 'Telefon (Android) i komputer',
+          paragraphs: [
+            'Android: menu Chrome → Zainstaluj aplikację. Windows/macOS: przycisk „Zainstaluj aplikację” w sekcji informacji na stronie (Chrome/Edge).',
+          ],
+        },
+      ],
+      en: [
+        {
+          title: 'Phone (iOS)',
+          paragraphs: [
+            'Safari → Share → Add to Home Screen. The PWA gets more storage for large files than a regular tab.',
+          ],
+        },
+        {
+          title: 'Android and desktop',
+          paragraphs: [
+            'Android: Chrome menu → Install app. Windows/macOS: “Install app” in the info section on the page (Chrome/Edge).',
+          ],
+        },
+      ],
+    },
+  },
+  {
+    id: 'drag-drop',
+    icon: 'drag',
+    plSlug: 'przeciagnij-i-upusc',
+    enSlug: 'drag-and-drop-send',
+    title: {
+      pl: 'Przeciągnij i upuść pliki (PC, PWA) | pliki.vxh.pl',
+      en: 'Drag and drop files (desktop, PWA) | pliki.vxh.pl',
+    },
+    description: {
+      pl: 'Wysyłaj pliki przeciągając je na kartę urządzenia lub upuszczając na stronie. Działa w przeglądarce na komputerze i w zainstalowanej PWA.',
+      en: 'Send files by dragging onto a device card or dropping on the page. Works in the desktop browser and installed PWA.',
+    },
+    keywords: {
+      pl: ['przeciągnij', 'drag drop', 'pwa', 'komputer'],
+      en: ['drag', 'drop', 'pwa', 'desktop'],
+    },
+    h1: { pl: 'Przeciągnij i upuść pliki', en: 'Drag and drop to send' },
+    sections: {
+      pl: [
+        {
+          title: 'Jak wysłać',
+          paragraphs: [
+            'Gdy na liście jest jedno wolne urządzenie, upuść plik gdziekolwiek na podświetlonej strefie. Przy kilku urządzeniach upuść plik na wybraną kartę (nie na przyciemnione tło).',
+            'Możesz też przeciągnąć pliki bezpośrednio na kartę urządzenia bez otwierania okna wyboru plików.',
+          ],
+        },
+        {
+          title: 'Wymagania',
+          paragraphs: [
+            'Ta sama sieć WiFi, ustawiony nick i aktywne połączenie z serwisem. Urządzenie zajęte wysyłką lub odbiorem nie przyjmie kolejnego pliku od razu.',
+          ],
+        },
+      ],
+      en: [
+        {
+          title: 'How to send',
+          paragraphs: [
+            'With one available device, drop a file anywhere in the highlighted zone. With several devices, drop on the chosen card (not the dimmed backdrop).',
+            'You can also drag files straight onto a device card without using the file picker.',
+          ],
+        },
+        {
+          title: 'Requirements',
+          paragraphs: [
+            'Same WiFi, a nickname set, and an online service connection. A busy device (sending or receiving) may reject another file until it finishes.',
+          ],
+        },
+      ],
+    },
+  },
+  {
+    id: 'file-bundles',
+    icon: 'bundle',
+    plSlug: 'wiele-plikow-paczka',
+    enSlug: 'multiple-files-bundle',
+    title: {
+      pl: 'Wiele plików naraz i paczki | pliki.vxh.pl',
+      en: 'Multiple files and bundles | pliki.vxh.pl',
+    },
+    description: {
+      pl: 'Wyślij wiele plików jednym transferem. Odbiorca widzi paczkę z listą, zapisem ZIP lub pojedynczymi plikami.',
+      en: 'Send many files in one transfer. The receiver sees a bundle with a file list, ZIP download, or individual saves.',
+    },
+    keywords: {
+      pl: ['wiele plików', 'paczka', 'zip', 'batch'],
+      en: ['multiple files', 'bundle', 'zip', 'batch'],
+    },
+    h1: { pl: 'Wiele plików i paczki', en: 'Multiple files and bundles' },
+    sections: {
+      pl: [
+        {
+          title: 'Wysyłka',
+          paragraphs: [
+            'Przycisk „Wybierz pliki” pozwala zaznaczyć wiele pozycji. Postęp pokazuje numer pliku w partii. Anulowanie przerywa bieżącą wysyłkę.',
+          ],
+        },
+        {
+          title: 'Odbiór',
+          paragraphs: [
+            'Pliki z jednej partii grupują się w paczkę z liczbą plików i rozmiarem. Rozwiń listę, zapisz całość jako ZIP albo każdy plik osobno. Usuń całą paczkę jednym przyciskiem.',
+          ],
+        },
+      ],
+      en: [
+        {
+          title: 'Sending',
+          paragraphs: [
+            '“Choose files” accepts multiple items. Progress shows the file index in the batch. Cancel stops the current send.',
+          ],
+        },
+        {
+          title: 'Receiving',
+          paragraphs: [
+            'Files from one batch are grouped as a bundle with count and size. Expand the list, save as ZIP or individually, or remove the whole bundle at once.',
+          ],
+        },
+      ],
     },
   },
 ];
@@ -484,10 +784,10 @@ export function getHubLabels(lang: SeoLang) {
     ? {
         title: 'Wyślij plik w WiFi bez aplikacji, poradniki | pliki.vxh.pl',
         description:
-          'Przesyłaj pliki w sieci lokalnej (LAN) między telefonem a komputerem, bez instalacji aplikacji. Poradniki: WiFi, P2P, iPhone, duże pliki, biuro, prywatność.',
+          'Przesyłaj pliki w LAN między telefonem a komputerem: wiele plików, przeciągnij i upuść, paczki, podgląd ZIP/audio/wideo, PWA. Poradniki krok po kroku.',
         h1: 'Poradniki: wysyłanie plików w sieci lokalnej',
         intro:
-          'Transfer plików w tej samej sieci WiFi, bez chmury i bez aplikacji. Wybierz temat lub od razu uruchom pliki.vxh.pl.',
+          'pliki.vxh.pl działa w przeglądarce w tej samej WiFi: wysyłka wielu plików, drag and drop na PC, paczki, podgląd i PWA. Wybierz temat poniżej lub uruchom aplikację.',
         openApp: 'Otwórz aplikację',
         allTopics: 'Wszystkie tematy',
         langSwitch: 'English version',
@@ -495,12 +795,76 @@ export function getHubLabels(lang: SeoLang) {
     : {
         title: 'Send files on WiFi without an app, guides | pliki.vxh.pl',
         description:
-          'Transfer files on your local network (LAN) between phone and PC, no app install. Guides: WiFi, P2P, iPhone, large files, office, privacy.',
+          'LAN file transfer between phone and PC: multi-file send, drag and drop, bundles, ZIP/audio/video preview, PWA. Step-by-step guides.',
         h1: 'Guides: local network file transfer',
         intro:
-          'Send files on the same WiFi without cloud or app install. Pick a topic or open pliki.vxh.pl.',
+          'pliki.vxh.pl runs in the browser on the same WiFi: multi-file send, desktop drag and drop, bundles, previews, and PWA. Pick a topic below or open the app.',
         openApp: 'Open the app',
         allTopics: 'All topics',
         langSwitch: 'Wersja polska',
+      };
+}
+
+export function getHubFeatures(lang: SeoLang) {
+  return lang === 'pl'
+    ? {
+        heading: 'Co potrafi aplikacja',
+        items: [
+          {
+            icon: 'drag' as const,
+            title: 'Przeciągnij i upuść',
+            text: 'Na komputerze i w PWA: upuść plik na urządzenie lub na stronę.',
+          },
+          {
+            icon: 'bundle' as const,
+            title: 'Wiele plików i paczki',
+            text: 'Jedna wysyłka, wiele plików. Odbiorca zapisuje paczkę lub ZIP.',
+          },
+          {
+            icon: 'zip' as const,
+            title: 'Podgląd ZIP',
+            text: 'Lista plików w archiwum bez rozpakowywania.',
+          },
+          {
+            icon: 'music' as const,
+            title: 'Audio i wideo',
+            text: 'Miniatura z falą, odtwarzacz i podgląd przed zapisem.',
+          },
+          {
+            icon: 'pwa' as const,
+            title: 'PWA',
+            text: 'Dodaj do ekranu: więcej miejsca na duże pliki (Safari, Chrome).',
+          },
+        ],
+      }
+    : {
+        heading: 'What the app does',
+        items: [
+          {
+            icon: 'drag' as const,
+            title: 'Drag and drop',
+            text: 'On desktop and PWA: drop onto a device or the page.',
+          },
+          {
+            icon: 'bundle' as const,
+            title: 'Multi-file bundles',
+            text: 'One send, many files. Receiver saves a bundle or ZIP.',
+          },
+          {
+            icon: 'zip' as const,
+            title: 'ZIP preview',
+            text: 'Browse archive contents without extracting.',
+          },
+          {
+            icon: 'music' as const,
+            title: 'Audio and video',
+            text: 'Waveform thumb, player, and preview before save.',
+          },
+          {
+            icon: 'pwa' as const,
+            title: 'PWA',
+            text: 'Add to Home Screen for more storage (Safari, Chrome).',
+          },
+        ],
       };
 }
