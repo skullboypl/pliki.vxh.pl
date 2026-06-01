@@ -1091,20 +1091,9 @@ export default function ShareApp() {
   }, [refreshStorageSnapshot, getActiveTransferKeepNames, purgeAllReceivedStorage]);
 
   useEffect(() => {
-    const onBeforeUnload = () => {
-      markPageReloading();
-    };
-    const onReloadKey = (e: KeyboardEvent) => {
-      if (e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r')) {
-        markPageReloading();
-      }
-    };
-    const onPageHide = (e: PageTransitionEvent) => {
-      if (e.persisted) return;
-      if (isPageReloading()) return;
-      // PWA/mobile: pagehide can fire when the OS opens a system sheet (downloads/share)
-      // or the app goes briefly to background. Do not wipe OPFS/object URLs in that case.
-      if (isStandalonePwa() || isMobile()) return;
+    const scheduledCleanupRef = { id: 0 as unknown as ReturnType<typeof setTimeout> | 0 };
+
+    const runCleanup = () => {
       clearBrowserSessionMarker();
       const keep = getActiveTransferKeepNames();
       for (const link of downloadLinksRef.current) {
@@ -1118,13 +1107,56 @@ export default function ShareApp() {
       clearReceivedFileManifest();
       if (hasOPFS()) void purgeOpfsStaging(keep);
     };
+
+    const onBeforeUnload = () => {
+      markPageReloading();
+    };
+    const onReloadKey = (e: KeyboardEvent) => {
+      if (e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r')) {
+        markPageReloading();
+      }
+    };
+    const onPageHide = (e: PageTransitionEvent) => {
+      if (e.persisted) return;
+      if (isPageReloading()) return;
+
+      // On mobile/PWA, pagehide can also fire for temporary OS UI (share sheet / downloads),
+      // so we delay cleanup and cancel it if the page becomes visible again.
+      if (isStandalonePwa() || isMobile()) {
+        if (scheduledCleanupRef.id) clearTimeout(scheduledCleanupRef.id);
+        scheduledCleanupRef.id = setTimeout(() => {
+          scheduledCleanupRef.id = 0;
+          runCleanup();
+        }, 12_000);
+        return;
+      }
+
+      runCleanup();
+    };
+
+    const cancelScheduledCleanup = () => {
+      if (!scheduledCleanupRef.id) return;
+      clearTimeout(scheduledCleanupRef.id);
+      scheduledCleanupRef.id = 0;
+    };
+
+    const onShow = () => cancelScheduledCleanup();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') cancelScheduledCleanup();
+    };
+
     window.addEventListener('beforeunload', onBeforeUnload);
     window.addEventListener('keydown', onReloadKey);
     window.addEventListener('pagehide', onPageHide);
+    window.addEventListener('pageshow', onShow);
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
       window.removeEventListener('beforeunload', onBeforeUnload);
       window.removeEventListener('keydown', onReloadKey);
       window.removeEventListener('pagehide', onPageHide);
+      window.removeEventListener('pageshow', onShow);
+      document.removeEventListener('visibilitychange', onVisible);
+      cancelScheduledCleanup();
     };
   }, [getActiveTransferKeepNames]);
 
