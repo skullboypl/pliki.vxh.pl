@@ -3538,10 +3538,10 @@ export default function ShareApp() {
           />
         ) : null}
         {isStandalone || isMobile() ? (
-          <div className="app-guide app-guide--storage" aria-label={MESSAGES[lang].storagePanelLabel}>
-            <div className="app-guide__card">
-              <div className="app-guide__section">
-                {deviceHints.ios && !isChromeIOS() ? null : (
+          deviceHints.ios && !isChromeIOS() ? null : (
+            <div className="app-guide app-guide--storage" aria-label={MESSAGES[lang].storagePanelLabel}>
+              <div className="app-guide__card">
+                <div className="app-guide__section">
                   <StorageQuotaPanel
                     lang={lang}
                     copy={MESSAGES[lang]}
@@ -3553,10 +3553,10 @@ export default function ShareApp() {
                     sendingActive={Object.values(transferProgress).some((tp) => tp?.mode === 'send')}
                     showSharedOriginNote={!!otherClientSurface}
                   />
-                )}
+                </div>
               </div>
             </div>
-          </div>
+          )
         ) : null}
       </section>
 
