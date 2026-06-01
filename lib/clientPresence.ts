@@ -1,8 +1,4 @@
-import {
-  getClientSurface,
-  type ClientSurface,
-  otherSurfaceLabel,
-} from '@/lib/clientSurface';
+import { getClientSurface, type ClientSurface } from '@/lib/clientSurface';
 
 const CHANNEL = 'vxh_surface_presence_v1';
 const PING_MS = 4000;
@@ -47,9 +43,12 @@ export function formatDualSurfaceWarning(
   other: ClientSurface,
   lang: 'pl' | 'en',
 ): string {
-  const otherLabel = otherSurfaceLabel(other, lang);
   if (lang === 'pl') {
-    return `Masz też otwartą ${otherLabel}. To osobne połączenia w sieci, ale limit dysku przeglądarki jest wspólny. Przy dużych plikach (np. 8 GB) używaj jednego okna — wysyłka w jednym, odbiór w drugim.`;
+    return other === 'pwa'
+      ? 'Masz też otwartą aplikacja PWA'
+      : 'Masz też otwartą karta Chrome';
   }
-  return `You also have ${otherLabel} open. Those are separate network peers, but browser storage quota is shared. For large files (e.g. 8 GB), use one window for send and one for receive — not both as the same “client”.`;
+  return other === 'pwa'
+    ? 'You also have the PWA app open'
+    : 'You also have a Chrome tab open';
 }

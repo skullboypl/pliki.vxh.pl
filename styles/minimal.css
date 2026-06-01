@@ -326,6 +326,10 @@ body.has-dev-banner > .dev-banner {
   font-variant-numeric: tabular-nums;
 }
 
+.storage-aside__bar {
+  margin: 0;
+}
+
 .storage-aside__track {
   display: block;
   height: 3px;
@@ -344,7 +348,8 @@ body.has-dev-banner > .dev-banner {
 }
 
 .storage-aside__disclaimer {
-  margin: 8px 0 0;
+  margin: 10px 0 0;
+  max-width: 280px;
   font-size: 0.6875rem;
   line-height: 1.4;
   color: #4a5568;
@@ -368,8 +373,16 @@ body.has-dev-banner > .dev-banner {
   color: #8a9bb0;
 }
 
-.storage-panel-top {
-  margin-bottom: 14px;
+.app-guide--storage {
+  margin: 16px 0 0;
+}
+
+.app-guide--storage .app-guide__card {
+  margin-bottom: 0;
+}
+
+body.is-pwa .app-guide--storage {
+  margin-top: 16px;
 }
 
 .storage-aside--compact .storage-aside__limits {
@@ -405,6 +418,29 @@ body.has-dev-banner > .dev-banner {
   font-size: 0.75rem;
   line-height: 1.4;
   color: #7dd3fc;
+}
+
+.storage-aside__more {
+  margin-top: 8px;
+}
+
+.storage-aside__more-summary {
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: #7dd3fc;
+  list-style: none;
+}
+
+.storage-aside__more-summary::-webkit-details-marker {
+  display: none;
+}
+
+.storage-aside__more[open] .storage-aside__limits {
+  margin-top: 6px;
+}
+
+.storage-aside__more--dev .storage-aside__note {
+  margin-top: 8px;
 }
 
 .storage-panel__list {
@@ -3342,6 +3378,11 @@ body.has-dev-banner:has(.seo-page) {
 
 /* ========= PWA (standalone) — app shell, not website ========= */
 body.is-pwa .web-only {
+  display: none !important;
+}
+
+/* Empty “Informacje” card was only web-only sections — hide if anything slips through */
+body.is-pwa .share-app .app-guide:not(.app-guide--storage) {
   display: none !important;
 }
 

@@ -9,6 +9,7 @@ import {
   detectDeviceKind,
   isStandalonePwa,
   normalizeDeviceKind,
+  watchPwaDisplayMode,
   type DeviceKind,
 } from '@/lib/device';
 import {
@@ -333,6 +334,11 @@ const MESSAGES = {
     storageQuotaDevToolsHint:
       'Pasek = Chrome DevTools → Application → Storage (webkit / estimate). Odbiór plików liczy wyższe usage, gdy OPFS na dysku > API.',
     storageQuotaFree: 'Wolne: {free} · {mode}',
+    storageQuotaFreeShort: 'Wolne: {free}',
+    storageReceivedInApp: 'Zajęte przez odebrane pliki: ~{size}',
+    storageMaxReceiveShort: 'Maks. jeden plik teraz: ~{max}',
+    storageMoreDetails: 'Więcej informacji',
+    storageDevDiagnostics: 'Diagnostyka (środowisko dev)',
     storageQuotaOpfs: 'OPFS na dysku: {opfs} (z API: {apiOpfs})',
     storageMaxReceiveOpfs: 'Maks. jeden plik teraz (wolne − 48 MB): ~{max}',
     storageMaxReceiveRam:
@@ -498,6 +504,11 @@ const MESSAGES = {
     storageQuotaDevToolsHint:
       'Bar matches Chrome DevTools → Application → Storage (webkit / estimate). Large receives use higher effective usage when OPFS on disk exceeds API.',
     storageQuotaFree: 'Free: {free} · {mode}',
+    storageQuotaFreeShort: 'Free: {free}',
+    storageReceivedInApp: 'Used by received files: ~{size}',
+    storageMaxReceiveShort: 'Max single file now: ~{max}',
+    storageMoreDetails: 'More info',
+    storageDevDiagnostics: 'Diagnostics (dev environment)',
     storageQuotaOpfs: 'OPFS on disk: {opfs} (API: {apiOpfs})',
     storageMaxReceiveOpfs: 'Max single file now (free − 48 MB): ~{max}',
     storageMaxReceiveRam:
@@ -2871,20 +2882,19 @@ export default function ShareApp() {
       else document.body.classList.remove('is-pwa');
     };
     syncStandalone();
-    const mq = window.matchMedia('(display-mode: standalone)');
-    const onStandaloneChange = () => {
+    const onDisplayModeChange = () => {
       syncStandalone();
       emitRegisterDevice();
       if (isStandalonePwa()) {
         void requestPersistentStorageIfPwa(true).then(() => refreshStorageSnapshot());
       }
     };
-    mq.addEventListener('change', onStandaloneChange);
+    const unwatchDisplay = watchPwaDisplayMode(onDisplayModeChange);
     if (isStandalonePwa()) {
       void requestPersistentStorageIfPwa(true).then(() => refreshStorageSnapshot());
     }
     return () => {
-      mq.removeEventListener('change', onStandaloneChange);
+      unwatchDisplay();
       document.body.classList.remove('is-pwa');
     };
   }, [emitRegisterDevice, refreshStorageSnapshot]);
@@ -3156,26 +3166,6 @@ export default function ShareApp() {
         <div className="dual-surface-banner" role="status">
           {formatDualSurfaceWarning(otherClientSurface, lang)}
         </div>
-      ) : null}
-
-      {isStandalone || isMobile() ? (
-        <section
-          className="storage-panel-top"
-          aria-label={MESSAGES[lang].storagePanelLabel}
-        >
-          <StorageQuotaPanel
-            lang={lang}
-            copy={MESSAGES[lang]}
-            snapshot={storageSnapshot}
-            isIos={deviceHints.ios || deviceHints.android}
-            isMobilePlatform={deviceHints.ios || deviceHints.android}
-            isChromeOnIos={deviceHints.ios && isChromeIOS()}
-            isStandalone={isStandalone}
-            sendingActive={Object.values(transferProgress).some((tp) => tp?.mode === 'send')}
-            showSharedOriginNote={!!otherClientSurface}
-            compact
-          />
-        </section>
       ) : null}
 
       {isMobile() ? (
@@ -3523,11 +3513,30 @@ export default function ShareApp() {
             deleteAllLabel={t('receivedDeleteAll')}
           />
         ) : null}
+        {isStandalone || isMobile() ? (
+          <div className="app-guide app-guide--storage" aria-label={MESSAGES[lang].storagePanelLabel}>
+            <div className="app-guide__card">
+              <div className="app-guide__section">
+                <StorageQuotaPanel
+                  lang={lang}
+                  copy={MESSAGES[lang]}
+                  snapshot={storageSnapshot}
+                  isIos={deviceHints.ios || deviceHints.android}
+                  isMobilePlatform={deviceHints.ios || deviceHints.android}
+                  isChromeOnIos={deviceHints.ios && isChromeIOS()}
+                  isStandalone={isStandalone}
+                  sendingActive={Object.values(transferProgress).some((tp) => tp?.mode === 'send')}
+                  showSharedOriginNote={!!otherClientSurface}
+                />
+              </div>
+            </div>
+          </div>
+        ) : null}
       </section>
 
-      <section className="app-guide" aria-label={lang === 'pl' ? 'Informacje' : 'Info'}>
-        <div className="app-guide__card">
-          {!(isStandalone || isMobile()) ? (
+      {!(isStandalone || isMobile()) ? (
+        <section className="app-guide" aria-label={lang === 'pl' ? 'Informacje' : 'Info'}>
+          <div className="app-guide__card">
             <div className="app-guide__section">
               <StorageQuotaPanel
                 lang={lang}
@@ -3541,37 +3550,37 @@ export default function ShareApp() {
                 showSharedOriginNote={!!otherClientSurface}
               />
             </div>
-          ) : null}
-          <div className="app-guide__section app-guide__section--how web-only">
-            <p className="app-guide__heading">{t('howTitle')}</p>
-            <ol className="app-guide__steps">
-              <li>{t('step1')}</li>
-              <li>{t('step2')}</li>
-              <li>{t('step3')}</li>
-            </ol>
-            <p className="app-guide__note">{t('stepReceive')}</p>
-          </div>
-          {showPwaBar && !isMobile() ? (
-            <div className="app-guide__section app-guide__section--pwa web-only">
-              {showInstallButton ? (
-                <div className="app-guide__pwa-install">
-                  <p className="app-guide__heading">{t('installDesktopHeading')}</p>
-                  <p className="app-guide__pwa-install-hint">{t('installAppBtnHint')}</p>
-                  <button
-                    type="button"
-                    className="btn-save btn-save-compact app-guide__pwa-install-btn"
-                    onClick={handleInstallClick}
-                  >
-                    {t('installBtn')}
-                  </button>
-                </div>
-              ) : (
-                <p className="app-guide__pwa-hint">{t('pwaIosHint')}</p>
-              )}
+            <div className="app-guide__section app-guide__section--how">
+              <p className="app-guide__heading">{t('howTitle')}</p>
+              <ol className="app-guide__steps">
+                <li>{t('step1')}</li>
+                <li>{t('step2')}</li>
+                <li>{t('step3')}</li>
+              </ol>
+              <p className="app-guide__note">{t('stepReceive')}</p>
             </div>
-          ) : null}
-        </div>
-      </section>
+            {showPwaBar ? (
+              <div className="app-guide__section app-guide__section--pwa">
+                {showInstallButton ? (
+                  <div className="app-guide__pwa-install">
+                    <p className="app-guide__heading">{t('installDesktopHeading')}</p>
+                    <p className="app-guide__pwa-install-hint">{t('installAppBtnHint')}</p>
+                    <button
+                      type="button"
+                      className="btn-save btn-save-compact app-guide__pwa-install-btn"
+                      onClick={handleInstallClick}
+                    >
+                      {t('installBtn')}
+                    </button>
+                  </div>
+                ) : (
+                  <p className="app-guide__pwa-hint">{t('pwaIosHint')}</p>
+                )}
+              </div>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
 
       {quotaReceiveModal ? (
         <div
