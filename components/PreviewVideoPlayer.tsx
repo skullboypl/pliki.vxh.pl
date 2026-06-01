@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPlayer } from '@videojs/react';
 import { Video, VideoSkin, videoFeatures } from '@videojs/react/video';
 import '@videojs/react/video/skin.css';
@@ -35,15 +35,78 @@ export default function PreviewVideoPlayer({
   errorMessage,
 }: Props) {
   const [failed, setFailed] = useState(false);
+  const [fsNonce, setFsNonce] = useState(0);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
   const type = videoMime(fileName, mime, fileType);
+
+  const isCoarsePointer = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia?.('(pointer: coarse)')?.matches ?? false;
+  }, []);
 
   useEffect(() => {
     setFailed(false);
   }, [src, type]);
 
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const video = wrap.querySelector('video') as HTMLVideoElement | null;
+    if (!video) return;
+
+    const onEndedFs = () => {
+      // iOS Safari sometimes refuses to re-enter fullscreen after exiting unless the
+      // media element is re-initialized. Remounting is a safe, low-impact fix.
+      setFsNonce((n) => n + 1);
+    };
+
+    const onFsChange = () => {
+      // When using the Fullscreen API, exiting should restore ability to enter again.
+      // Remount on exit to keep behavior consistent across iOS/Android.
+      if (!document.fullscreenElement) setFsNonce((n) => n + 1);
+    };
+
+    video.addEventListener('webkitendfullscreen', onEndedFs as EventListener);
+    document.addEventListener('fullscreenchange', onFsChange);
+    return () => {
+      video.removeEventListener('webkitendfullscreen', onEndedFs as EventListener);
+      document.removeEventListener('fullscreenchange', onFsChange);
+    };
+  }, [src, type]);
+
+  const enterNativeFullscreen = async () => {
+    const wrap = wrapRef.current;
+    const video = wrap?.querySelector('video') as HTMLVideoElement | null;
+    if (!video) return;
+
+    // Android/desktop Fullscreen API
+    const el = video as HTMLVideoElement & {
+      webkitEnterFullscreen?: () => void;
+      requestFullscreen?: (opts?: unknown) => Promise<void>;
+    };
+
+    try {
+      if (typeof el.requestFullscreen === 'function') {
+        await el.requestFullscreen({ navigationUI: 'hide' } as unknown);
+        return;
+      }
+    } catch {
+      // fall through to iOS-only API
+    }
+
+    // iOS Safari native fullscreen
+    try {
+      if (typeof el.webkitEnterFullscreen === 'function') {
+        el.webkitEnterFullscreen();
+      }
+    } catch {
+      /* ignore */
+    }
+  };
+
   if (failed) {
     return (
-      <div className="preview-video-wrap">
+      <div className="preview-video-wrap" ref={wrapRef}>
         <p className="preview-video-error" role="alert">
           {errorMessage}
         </p>
@@ -52,8 +115,18 @@ export default function PreviewVideoPlayer({
   }
 
   return (
-    <div className="preview-video-wrap">
-      <Player.Provider key={src}>
+    <div className="preview-video-wrap" ref={wrapRef}>
+      {isCoarsePointer ? (
+        <button
+          type="button"
+          className="preview-video-fsbtn"
+          onClick={() => void enterNativeFullscreen()}
+          aria-label="Fullscreen"
+        >
+          ⤢
+        </button>
+      ) : null}
+      <Player.Provider key={`${src}:${fsNonce}`}>
         <VideoSkin className="preview-video-player">
           <Video
             src={src}
