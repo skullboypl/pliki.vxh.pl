@@ -112,36 +112,6 @@
   background: #000;
   --media-border-radius: 0;
   --media-video-border-radius: 0;
-  position: relative;
-}
-
-.preview-video-fsbtn {
-  position: absolute;
-  z-index: 5;
-  top: 10px;
-  right: 10px;
-  width: 40px;
-  height: 40px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(0, 0, 0, 0.4);
-  color: #e5e7eb;
-  font-size: 18px;
-  line-height: 1;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-
-.preview-video-fsbtn:active {
-  transform: scale(0.98);
-}
-
-.preview-video-fsbtn:focus-visible {
-  outline: 2px solid rgba(125, 211, 252, 0.8);
-  outline-offset: 2px;
 }
 
 .preview-video-player {

@@ -44,6 +44,11 @@ export default function PreviewVideoPlayer({
     return window.matchMedia?.('(pointer: coarse)')?.matches ?? false;
   }, []);
 
+  const isIOS = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    return /iphone|ipad|ipod/i.test(navigator.userAgent);
+  }, []);
+
   useEffect(() => {
     setFailed(false);
   }, [src, type]);
@@ -74,35 +79,53 @@ export default function PreviewVideoPlayer({
     };
   }, [src, type]);
 
-  const enterNativeFullscreen = async () => {
+  useEffect(() => {
+    if (!isCoarsePointer) return;
     const wrap = wrapRef.current;
-    const video = wrap?.querySelector('video') as HTMLVideoElement | null;
-    if (!video) return;
+    if (!wrap) return;
 
-    // Android/desktop Fullscreen API
-    const el = video as HTMLVideoElement & {
-      webkitEnterFullscreen?: () => void;
-      requestFullscreen?: (opts?: unknown) => Promise<void>;
-    };
+    const onClickCapture = (ev: MouseEvent) => {
+      const target = ev.target as Element | null;
+      if (!target) return;
 
-    try {
-      if (typeof el.requestFullscreen === 'function') {
-        await el.requestFullscreen({ navigationUI: 'hide' } as unknown);
+      // Use the existing fullscreen button in the control bar.
+      const fsButton = target.closest?.('media-fullscreen-button');
+      if (!fsButton) return;
+
+      const video = wrap.querySelector('video') as HTMLVideoElement | null;
+      if (!video) return;
+
+      // Keep this synchronous inside the click handler (user gesture).
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      const el = video as HTMLVideoElement & {
+        webkitEnterFullscreen?: () => void;
+        requestFullscreen?: (opts?: unknown) => Promise<void>;
+      };
+
+      if (isIOS && typeof el.webkitEnterFullscreen === 'function') {
+        try {
+          el.webkitEnterFullscreen();
+        } catch {
+          /* ignore */
+        }
         return;
       }
-    } catch {
-      // fall through to iOS-only API
-    }
 
-    // iOS Safari native fullscreen
-    try {
-      if (typeof el.webkitEnterFullscreen === 'function') {
-        el.webkitEnterFullscreen();
+      // Android/desktop
+      if (typeof el.requestFullscreen === 'function') {
+        try {
+          void el.requestFullscreen({ navigationUI: 'hide' } as unknown);
+        } catch {
+          /* ignore */
+        }
       }
-    } catch {
-      /* ignore */
-    }
-  };
+    };
+
+    wrap.addEventListener('click', onClickCapture, true);
+    return () => wrap.removeEventListener('click', onClickCapture, true);
+  }, [isCoarsePointer, isIOS, src, type]);
 
   if (failed) {
     return (
@@ -116,16 +139,6 @@ export default function PreviewVideoPlayer({
 
   return (
     <div className="preview-video-wrap" ref={wrapRef}>
-      {isCoarsePointer ? (
-        <button
-          type="button"
-          className="preview-video-fsbtn"
-          onClick={() => void enterNativeFullscreen()}
-          aria-label="Fullscreen"
-        >
-          ⤢
-        </button>
-      ) : null}
       <Player.Provider key={`${src}:${fsNonce}`}>
         <VideoSkin className="preview-video-player">
           <Video
