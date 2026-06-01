@@ -4,6 +4,7 @@ import packageJson from './package.json';
 const isProd = process.env.NODE_ENV === 'production';
 
 const nextConfig: NextConfig = {
+  transpilePackages: ['@videojs/react', '@videojs/core', '@videojs/utils', '@videojs/spf', '@videojs/store'],
   env: {
     NEXT_PUBLIC_APP_VERSION: packageJson.version,
   },

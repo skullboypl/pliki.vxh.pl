@@ -38,7 +38,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <meta httpEquiv="Pragma" content="no-cache" />
         <meta httpEquiv="Expires" content="0" />
-        <script dangerouslySetInnerHTML={{ __html: appBootScript() }} />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: appBootScript(process.env.NODE_ENV !== 'production'),
+          }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `document.querySelectorAll('body link[rel="manifest"],body link[rel="icon"],body link[rel="apple-touch-icon"]').forEach(function(el){document.head.appendChild(el);});`,

@@ -1,15 +1,24 @@
 {
   "name": "share-files-local",
-  "version": "3.0.3",
+  "version": "3.1.0",
   "license": "MIT",
   "private": true,
   "packageManager": "pnpm@10.22.0",
   "scripts": {
-    "dev": "cross-env NODE_ENV=development node server.js",
-    "dev:fresh": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\" && cross-env NODE_ENV=development node server.js",
+    "dev": "node scripts/ensure-dev-cert.js && cross-env NODE_ENV=development node server.js",
+    "dev:stop": "node scripts/dev-stop.js",
+    "dev:http": "cross-env NODE_ENV=development DEV_HTTP=1 node server.js",
+    "dev:fresh": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\" && node scripts/ensure-dev-cert.js && cross-env NODE_ENV=development node server.js",
+    "cert:dev": "node scripts/generate-dev-cert.js",
+    "cert:mkcert": "node scripts/cert-mkcert.js",
+    "cert:fix-trust": "node scripts/fix-mkcert-trust.js",
+    "cert:trust-check": "node scripts/check-mkcert-trust.js",
+    "tls:check": "node scripts/verify-dev-tls.js",
+    "cert:selfsigned": "node scripts/generate-dev-cert.js --selfsigned",
     "build": "next build",
     "start": "cross-env NODE_ENV=production node server.js",
-    "lint": "next lint"
+    "lint": "next lint",
+    "release:bump": "node scripts/bump-release.mjs"
   },
   "dependencies": {
     "@videojs/react": "10.0.0-beta.24",
@@ -28,6 +37,7 @@
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.5",
     "cross-env": "^7.0.3",
+    "selfsigned": "^2.4.1",
     "typescript": "^5.8.3"
   }
 }

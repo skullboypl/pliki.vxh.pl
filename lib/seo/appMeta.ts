@@ -4,7 +4,7 @@ import { GITHUB_REPO_URL, SITE_NAME, SITE_URL } from '@/lib/seo/site';
 /** Główna aplikacja (/) — copy pod pliki.vxh.pl i transfer LAN bez instalacji. */
 export const HOME_COPY = {
   pl: {
-    title: 'pliki.vxh.pl — wyślij plik w WiFi bez aplikacji',
+    title: 'pliki.vxh.pl: wyślij plik w WiFi bez aplikacji',
     shortTitle: 'Wyślij plik | pliki.vxh.pl',
     description:
       'Przesyłaj pliki między telefonem, komputerem i tabletem w tej samej sieci WiFi. Bez instalacji aplikacji, bez chmury i bez rejestracji. Transfer P2P w sieci lokalnej (LAN) przez WebRTC.',
@@ -20,10 +20,10 @@ export const HOME_COPY = {
       'lan file transfer',
       'send file wifi',
     ],
-    ogAlt: 'pliki.vxh.pl — przesyłanie plików w sieci lokalnej bez aplikacji',
+    ogAlt: 'pliki.vxh.pl: przesyłanie plików w sieci lokalnej bez aplikacji',
   },
   en: {
-    title: 'pliki.vxh.pl — send files on WiFi, no app needed',
+    title: 'pliki.vxh.pl: send files on WiFi, no app needed',
     shortTitle: 'Send files | pliki.vxh.pl',
     description:
       'Transfer files between phone, PC and tablet on the same WiFi network. No app install, no cloud upload, no signup. Direct P2P over your local network (LAN) via WebRTC.',
@@ -38,7 +38,7 @@ export const HOME_COPY = {
       'offline file transfer',
       'wifi file share',
     ],
-    ogAlt: 'pliki.vxh.pl — local network file transfer without an app',
+    ogAlt: 'pliki.vxh.pl: local network file transfer without an app',
   },
 } as const;
 
@@ -159,10 +159,10 @@ export function jsonLdHome() {
       },
       featureList: [
         'Transfer plików P2P w sieci lokalnej (LAN / WiFi)',
-        'Bez instalacji aplikacji — działa w przeglądarce',
+        'Bez instalacji aplikacji, działa w przeglądarce',
         'Bez chmury, limitów uploadu i rejestracji',
-        'Telefon, komputer, tablet — ta sama sieć',
-        'WebRTC — dane między urządzeniami, nie przez serwer plików',
+        'Telefon, komputer, tablet w tej samej sieci',
+        'WebRTC: dane między urządzeniami, nie przez serwer plików',
       ],
       inLanguage: ['pl-PL', 'en-US'],
       alternateName: en.title,

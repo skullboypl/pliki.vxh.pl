@@ -1,6 +1,6 @@
 import React from 'react';
 import { peerAnimalKey } from '@/lib/nicknames';
-import type { DeviceKind } from '@/lib/device';
+import { isMobileDeviceKind, type DeviceKind } from '@/lib/device';
 
 type IconProps = { size?: number; className?: string };
 
@@ -239,7 +239,58 @@ export function PeerAnimalIcon({ name, size = 28, className }: { name: string; s
   return <Icon size={size} className={className} />;
 }
 
-export function PeerDeviceIcon({ kind, size = 20, className }: { kind: DeviceKind; size?: number; className?: string }) {
+/** Monitor + mała ikona aplikacji (PWA na PC). */
+export function IconPwaDesktop({ size = 22, className }: IconProps) {
+  return (
+    <Svg size={size} className={className}>
+      <rect x="2.5" y="4" width="19" height="12" rx="1.5" />
+      <path d="M8 20h8" />
+      <path d="M12 16v4" />
+      <rect x="14" y="6.5" width="5.5" height="5.5" rx="1.25" fill="currentColor" stroke="none" opacity="0.9" />
+      <path d="M15.2 8.2h3.6M15.2 10h3.6" stroke="#0a0a0a" strokeWidth="0.65" />
+    </Svg>
+  );
+}
+
+/** Telefon / tablet z siatką (PWA na mobile). */
+export function IconPwaMobile({ size = 22, className }: IconProps) {
+  return (
+    <Svg size={size} className={className}>
+      <rect x="6.5" y="2" width="11" height="20" rx="2.25" />
+      <path d="M9.5 5h5" strokeWidth="1.5" />
+      <rect x="8.5" y="14" width="7" height="5" rx="1" fill="currentColor" stroke="none" opacity="0.85" />
+      <path d="M9.8 15.2h1.6v1.6M12.6 15.2h1.6v1.6M9.8 17.2h1.6v1.6M12.6 17.2h1.6v1.6" stroke="#0a0a0a" strokeWidth="0.55" />
+    </Svg>
+  );
+}
+
+export function IconPwaTablet({ size = 22, className }: IconProps) {
+  return (
+    <Svg size={size} className={className}>
+      <rect x="4.5" y="3" width="15" height="18" rx="2" />
+      <rect x="7.5" y="13" width="9" height="5" rx="1" fill="currentColor" stroke="none" opacity="0.85" />
+      <path d="M8.8 14.2h1.4v1.4M10.8 14.2h1.4v1.4M12.8 14.2h1.4v1.4M8.8 16h1.4v1.4M10.8 16h1.4v1.4M12.8 16h1.4v1.4" stroke="#0a0a0a" strokeWidth="0.5" />
+    </Svg>
+  );
+}
+
+export function PeerDeviceIcon({
+  kind,
+  standalone = false,
+  size = 20,
+  className,
+}: {
+  kind: DeviceKind;
+  standalone?: boolean;
+  size?: number;
+  className?: string;
+}) {
+  if (standalone) {
+    if (kind === 'ipad') return <IconPwaTablet size={size} className={className} />;
+    if (isMobileDeviceKind(kind)) return <IconPwaMobile size={size} className={className} />;
+    return <IconPwaDesktop size={size} className={className} />;
+  }
+
   switch (kind) {
     case 'iphone':
       return <IconIphone size={size} className={className} />;

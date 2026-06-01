@@ -22,3 +22,16 @@ export function detectDeviceKind(): DeviceKind {
   if (/mobile|tablet|silk|phone/.test(ua)) return 'mobile';
   return 'desktop';
 }
+
+export function isStandalonePwa(): boolean {
+  if (typeof window === 'undefined') return false;
+  const nav = navigator as Navigator & { standalone?: boolean };
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    ('standalone' in nav && !!nav.standalone)
+  );
+}
+
+export function isMobileDeviceKind(kind: DeviceKind): boolean {
+  return kind !== 'desktop';
+}

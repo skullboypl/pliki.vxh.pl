@@ -8,14 +8,9 @@ export default function DevBanner() {
   return (
     <div className="dev-banner" role="status" aria-live="polite">
       <span className="dev-banner__badge">DEV</span>
-      <span className="dev-banner__text">
-        Serwer deweloperski — do wysyłki plików korzystaj z oficjalnej wersji:{' '}
+      <span className="dev-banner__msg">
+        Dev preview. Please use the official app:{' '}
         <a href={OFFICIAL_SITE_URL}>{officialHost}</a>
-        <span className="dev-banner__en">
-          {' '}
-          · Dev preview — please use the official app:{' '}
-          <a href={OFFICIAL_SITE_URL}>{officialHost}</a>
-        </span>
       </span>
     </div>
   );

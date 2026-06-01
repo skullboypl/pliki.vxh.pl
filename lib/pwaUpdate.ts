@@ -44,13 +44,8 @@ export async function registerPwaUpdateService(): Promise<void> {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
   if (started) return;
 
-  const host = window.location.hostname;
-  const isLocal = host === 'localhost' || host === '127.0.0.1';
-  const isSecure = window.location.protocol === 'https:' || isLocal;
-
-  if (!isSecure) return;
-  // Dev: SW only on localhost (secure context). LAN IP in dev needs HTTPS for PWA.
-  if (process.env.NODE_ENV !== 'production' && !isLocal) return;
+  // MDN: SW / storage APIs need secure context — use `pnpm dev:https` on LAN.
+  if (!window.isSecureContext) return;
 
   started = true;
 

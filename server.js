@@ -1,4 +1,5 @@
-const { createServer } = require('http');
+const { createServer: createHttpServer } = require('http');
+const { createServer: createHttpsServer } = require('https');
 const fs = require('fs');
 const path = require('path');
 const next = require('next');
@@ -6,6 +7,11 @@ const { Server } = require('socket.io');
 const { generateNicknameSlug } = require('./shared/nicknames.js');
 const socketRateLimit = require('./server/socketRateLimit');
 const { buildServiceWorkerScript } = require('./server/pwaServiceWorker');
+const {
+  isDevHttpsEnabled,
+  getHttpsOptions,
+  printDevTlsBanner,
+} = require('./server/devTls');
 const packageJson = require('./package.json');
 
 const dev = process.env.NODE_ENV !== 'production';
@@ -19,8 +25,8 @@ const readBuildId = () => {
   }
 };
 
-/** Unique per process — dev restart bumps fingerprint → one cache clear for stale tabs. */
-const appBuildId = dev ? `dev-${Date.now().toString(36)}` : readBuildId();
+/** Production: .next/BUILD_ID. Dev: stable id — per-restart random ids break LAN/mobile chunk loads. */
+const appBuildId = dev ? process.env.DEV_BUILD_ID || 'dev-local' : readBuildId();
 const appVersion = packageJson.version;
 const appFingerprint = `${appBuildId}@${appVersion}`;
 process.env.APP_FINGERPRINT = appFingerprint;
@@ -33,11 +39,14 @@ if (!dev && !fs.existsSync(buildIdPath)) {
 }
 const hostname = process.env.HOSTNAME || '0.0.0.0';
 const port = parseInt(process.env.PORT || '3000', 10);
+const devHttps = dev && isDevHttpsEnabled();
+const devTls = devHttps ? getHttpsOptions() : null;
+const requestProtocol = devHttps ? 'https' : 'http';
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
-/** @type {Map<string, { publicIp: string, name: string, device: string }>} */
+/** @type {Map<string, { publicIp: string, name: string, device: string, standalone: boolean }>} */
 const clients = new Map();
 
 const DEVICE_KINDS = new Set(['desktop', 'iphone', 'ipad', 'android', 'mobile']);
@@ -73,6 +82,7 @@ const broadcastPeers = (io) => {
       name: data.name,
       shortId: shortId(id),
       device: normalizeDevice(data.device),
+      standalone: !!data.standalone,
     });
   }
   for (const [id, data] of clients.entries()) {
@@ -112,16 +122,22 @@ const attachSignaling = (httpServer) => {
   io.on('connection', (socket) => {
     const publicIp = remoteIp(socket);
     const name = generateNicknameSlug(namesInGroup(publicIp));
-    clients.set(socket.id, { publicIp, name, device: 'desktop' });
+    clients.set(socket.id, { publicIp, name, device: 'desktop', standalone: false });
     socket.emit('assigned_name', { name, shortId: shortId(socket.id) });
     broadcastPeers(io);
 
-    socket.on('register_device', (device) => {
+    socket.on('register_device', (payload) => {
       if (!socketRateLimit.allowMisc(socket.id)) return;
-      if (clients.has(socket.id)) {
-        clients.get(socket.id).device = normalizeDevice(device);
-        broadcastPeers(io);
+      if (!clients.has(socket.id)) return;
+      const entry = clients.get(socket.id);
+      if (typeof payload === 'string') {
+        entry.device = normalizeDevice(payload);
+        entry.standalone = false;
+      } else if (payload && typeof payload === 'object') {
+        entry.device = normalizeDevice(payload.device);
+        entry.standalone = !!payload.standalone;
       }
+      broadcastPeers(io);
     });
 
     socket.on('register_name', (rawName) => {
@@ -206,7 +222,7 @@ const isImmutableAsset = (pathname) =>
 
 /** Parsed URL shape expected by Next.js getRequestHandler (replaces deprecated url.parse). */
 const parseRequestUrl = (req) => {
-  const base = `http://${req.headers.host || `${hostname}:${port}`}`;
+  const base = `${requestProtocol}://${req.headers.host || `${hostname}:${port}`}`;
   const url = new URL(req.url || '/', base);
   const query = Object.fromEntries(url.searchParams);
   return {
@@ -219,8 +235,15 @@ const parseRequestUrl = (req) => {
   };
 };
 
+const createAppServer = (handler) => {
+  if (devHttps && devTls) {
+    return createHttpsServer({ key: devTls.key, cert: devTls.cert }, handler);
+  }
+  return createHttpServer(handler);
+};
+
 app.prepare().then(() => {
-  const httpServer = createServer((req, res) => {
+  const httpServer = createAppServer((req, res) => {
     const parsedUrl = parseRequestUrl(req);
     const { pathname } = parsedUrl;
 
@@ -243,6 +266,9 @@ app.prepare().then(() => {
 
     if (!isImmutableAsset(pathname)) {
       setNoCacheHeaders(res);
+      if (devHttps) {
+        res.setHeader('Content-Security-Policy', 'upgrade-insecure-requests');
+      }
     }
 
     handle(req, res, parsedUrl);
@@ -250,7 +276,34 @@ app.prepare().then(() => {
 
   attachSignaling(httpServer);
 
+  const redirectPort = parseInt(process.env.DEV_HTTP_REDIRECT_PORT || String(port + 1), 10);
+  let httpRedirectServer = null;
+  if (devHttps && devTls && redirectPort > 0 && redirectPort !== port) {
+    httpRedirectServer = createHttpServer((req, res) => {
+      const hostHeader = req.headers.host || `127.0.0.1:${port}`;
+      const hostOnly = hostHeader.replace(/:\d+$/, '') || '127.0.0.1';
+      const targetHost = hostOnly === '0.0.0.0' ? '127.0.0.1' : hostOnly;
+      const location = `https://${targetHost}:${port}${req.url || '/'}`;
+      res.writeHead(308, { Location: location, 'Cache-Control': 'no-store' });
+      res.end();
+    });
+    httpRedirectServer.listen(redirectPort, hostname, () => {
+      console.log(`> HTTP → HTTPS: http://127.0.0.1:${redirectPort} → https://127.0.0.1:${port}`);
+    });
+  }
+
   httpServer.listen(port, hostname, () => {
-    console.log(`> Share P2P ready on http://${hostname}:${port} (${dev ? 'dev' : 'production'})`);
+    if (devHttps && devTls) {
+      printDevTlsBanner(port, hostname, devTls);
+      if (httpRedirectServer) {
+        console.log(`> Jeśli wpisujesz http:// — użyj portu ${redirectPort} albo od razu https://`);
+      }
+      return;
+    }
+    const mode = dev ? 'dev' : 'production';
+    console.log(`> Share P2P ready on http://${hostname}:${port} (${mode})`);
+    if (dev) {
+      console.log('> Bez TLS: pnpm dev:http');
+    }
   });
 });

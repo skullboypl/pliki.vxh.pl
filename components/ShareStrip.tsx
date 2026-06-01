@@ -15,7 +15,7 @@ const COPY = {
     telegram: 'Telegram',
     x: 'X',
     email: 'E-mail',
-    shareText: 'Wyślij pliki w tej samej WiFi — bez aplikacji, bez chmury:',
+    shareText: 'Wyślij pliki w tej samej WiFi, bez aplikacji i chmury:',
   },
   en: {
     shareLabel: 'Share this page',
@@ -26,7 +26,7 @@ const COPY = {
     telegram: 'Telegram',
     x: 'X',
     email: 'Email',
-    shareText: 'Send files on the same WiFi — no app, no cloud:',
+    shareText: 'Send files on the same WiFi, no app, no cloud:',
   },
 };
 
@@ -163,6 +163,7 @@ export default function ShareStrip({ lang }: Props) {
   return (
     <section className="share-strip" aria-label={t.shareLabel}>
       <div className="share-strip-inner">
+        <span className="share-strip-label">{t.shareNative}</span>
         <div className="share-buttons">
           {canNativeShare && (
             <button

@@ -482,9 +482,9 @@ export function getAllStaticParams() {
 export function getHubLabels(lang: SeoLang) {
   return lang === 'pl'
     ? {
-        title: 'Wyślij plik w WiFi bez aplikacji — poradniki | pliki.vxh.pl',
+        title: 'Wyślij plik w WiFi bez aplikacji, poradniki | pliki.vxh.pl',
         description:
-          'Przesyłaj pliki w sieci lokalnej (LAN) między telefonem a komputerem — bez instalacji aplikacji. Poradniki: WiFi, P2P, iPhone, duże pliki, biuro, prywatność.',
+          'Przesyłaj pliki w sieci lokalnej (LAN) między telefonem a komputerem, bez instalacji aplikacji. Poradniki: WiFi, P2P, iPhone, duże pliki, biuro, prywatność.',
         h1: 'Poradniki: wysyłanie plików w sieci lokalnej',
         intro:
           'Transfer plików w tej samej sieci WiFi, bez chmury i bez aplikacji. Wybierz temat lub od razu uruchom pliki.vxh.pl.',
@@ -493,9 +493,9 @@ export function getHubLabels(lang: SeoLang) {
         langSwitch: 'English version',
       }
     : {
-        title: 'Send files on WiFi without an app — guides | pliki.vxh.pl',
+        title: 'Send files on WiFi without an app, guides | pliki.vxh.pl',
         description:
-          'Transfer files on your local network (LAN) between phone and PC — no app install. Guides: WiFi, P2P, iPhone, large files, office, privacy.',
+          'Transfer files on your local network (LAN) between phone and PC, no app install. Guides: WiFi, P2P, iPhone, large files, office, privacy.',
         h1: 'Guides: local network file transfer',
         intro:
           'Send files on the same WiFi without cloud or app install. Pick a topic or open pliki.vxh.pl.',

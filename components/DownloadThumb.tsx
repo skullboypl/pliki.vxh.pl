@@ -1,6 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import AudioListThumb from '@/components/AudioListThumb';
+import { isAudioLink } from '@/lib/audioMedia';
+
+export { isAudioLink } from '@/lib/audioMedia';
 
 type ThumbLink = {
   url: string;
@@ -23,9 +27,10 @@ export function isImageLink(link: ThumbLink) {
 }
 
 export function isVideoLink(link: ThumbLink) {
+  if (isAudioLink(link)) return false;
   const mt = (link.mime || '').toLowerCase();
   if (mt.startsWith('video/')) return true;
-  return /\.(mp4|webm|ogg|mov|m4v)$/i.test(link.fileName || '');
+  return /\.(mp4|webm|mov|m4v)$/i.test(link.fileName || '');
 }
 
 export function isTextLink(link: ThumbLink) {
@@ -37,7 +42,7 @@ export function isTextLink(link: ThumbLink) {
 }
 
 export function hasListThumb(link: ThumbLink) {
-  return isImageLink(link) || isVideoLink(link) || isTextLink(link);
+  return isImageLink(link) || isVideoLink(link) || isTextLink(link) || isAudioLink(link);
 }
 
 function snippetFromText(raw: string) {
@@ -107,6 +112,12 @@ export default function DownloadThumb({ link }: Props) {
 
   if (isTextLink(link)) {
     return <TextListThumb link={link} />;
+  }
+
+  if (isAudioLink(link)) {
+    return (
+      <AudioListThumb url={link.url} file={link.file} size={link.size ?? link.file?.size} />
+    );
   }
 
   return null;

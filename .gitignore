@@ -19,6 +19,10 @@
 .env*
 !.env.example
 
+# dev TLS (mkcert / self-signed — pnpm cert:mkcert)
+.cert/
+!.cert/README.md
+
 # ssh / deploy keys
 plikivxhplkey*
 *.key

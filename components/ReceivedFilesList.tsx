@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import DownloadThumb, { hasListThumb, isTextLink } from '@/components/DownloadThumb';
+import DownloadThumb, { hasListThumb, isAudioLink, isTextLink } from '@/components/DownloadThumb';
+import ZipListThumb from '@/components/ZipListThumb';
 import { downloadAllFiles, downloadBundleAsZip } from '@/lib/bundleDownload';
 import { isVxhTextNote } from '@/lib/textNote';
 
@@ -18,6 +19,8 @@ export type ReceivedFile = {
   batchIndex?: number;
   batchTotal?: number;
   receivedAt: number;
+  /** OPFS staging file name — removed when user deletes the item from the list. */
+  opfsEntryName?: string;
 };
 
 type Lang = 'pl' | 'en';
@@ -29,10 +32,15 @@ type Props = {
   links: ReceivedFile[];
   displayName: (name: string) => string;
   isPreviewable: (link: ReceivedFile) => boolean;
+  isZipListable?: (link: ReceivedFile) => boolean;
+  zipListLabel?: string;
   onSave: (link: ReceivedFile) => void;
   onMarkSaved: (ids: number[]) => void;
   onPreview: (link: ReceivedFile) => void;
+  onZipList?: (link: ReceivedFile) => void;
   onDelete: (id: number) => void;
+  onDeleteAll?: () => void;
+  deleteAllLabel?: string;
 };
 
 const COPY = {
@@ -54,6 +62,7 @@ const COPY = {
     savingZip: 'Pakowanie…',
     zipError: 'Nie udało się utworzyć ZIP.',
     showBTN: 'Podgląd',
+    listenBTN: 'Odtwórz',
     readBTN: 'Odczytaj',
     newFile: 'Nowy plik!',
     bundleTitle: 'Paczka · {count} plików',
@@ -80,6 +89,7 @@ const COPY = {
     savingZip: 'Zipping…',
     zipError: 'Could not create ZIP.',
     showBTN: 'Preview',
+    listenBTN: 'Play',
     readBTN: 'Read',
     newFile: 'New file!',
     bundleTitle: 'Bundle · {count} files',
@@ -95,6 +105,18 @@ const formatSize = (bytes: number) => {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+};
+
+const formatReceivedAt = (ms: number, lang: Lang) => {
+  if (!ms) return '';
+  const tag = lang === 'pl' ? 'pl-PL' : 'en-GB';
+  return new Date(ms).toLocaleString(tag, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 };
 
 type BundleGroup = {
@@ -220,10 +242,15 @@ export default function ReceivedFilesList({
   links,
   displayName,
   isPreviewable,
+  isZipListable,
+  zipListLabel,
   onSave,
   onMarkSaved,
   onPreview,
+  onZipList,
   onDelete,
+  onDeleteAll,
+  deleteAllLabel,
 }: Props) {
   const t = COPY[lang];
   const [filter, setFilter] = useState<FilterKey>('all');
@@ -267,12 +294,28 @@ export default function ReceivedFilesList({
   const renderFileRow = (link: ReceivedFile, nested = false) => (
     <div key={link.id} className={`download-row ${link.isNew ? 'is-new' : ''}${nested ? ' download-row-nested' : ''}`}>
       <div className="download-row-main">
-        {hasListThumb(link) ? (
+        {isZipListable?.(link) && onZipList && zipListLabel ? (
+          <button
+            type="button"
+            className="download-thumb download-thumb--zip"
+            onClick={() => void onZipList(link)}
+            aria-label={zipListLabel}
+          >
+            <ZipListThumb
+              url={link.url}
+              file={link.file}
+              size={link.size}
+              lang={lang}
+            />
+          </button>
+        ) : hasListThumb(link) ? (
           <button
             type="button"
             className="download-thumb"
             onClick={() => onPreview(link)}
-            aria-label={isTextLink(link) ? t.readBTN : t.showBTN}
+            aria-label={
+              isTextLink(link) ? t.readBTN : isAudioLink(link) ? t.listenBTN : t.showBTN
+            }
           >
             <DownloadThumb link={link} />
           </button>
@@ -286,6 +329,14 @@ export default function ReceivedFilesList({
               <>
                 {' · '}
                 {t.fromWho.replace('{name}', displayName(link.peerName))}
+                {link.receivedAt ? (
+                  <>
+                    {' · '}
+                    <time dateTime={new Date(link.receivedAt).toISOString()}>
+                      {formatReceivedAt(link.receivedAt, lang)}
+                    </time>
+                  </>
+                ) : null}
               </>
             )}
             {nested && link.batchIndex && link.batchTotal ? (
@@ -299,9 +350,18 @@ export default function ReceivedFilesList({
             <button type="button" className="btn-save" onClick={() => onSave(link)}>
               {t.saveFile}
             </button>
+            {isZipListable?.(link) && onZipList && zipListLabel ? (
+              <button type="button" className="btn-ghost" onClick={() => void onZipList(link)}>
+                {zipListLabel}
+              </button>
+            ) : null}
             {isPreviewable(link) && (
               <button type="button" className="btn-ghost" onClick={() => onPreview(link)}>
-                {isVxhTextNote(link.fileName) ? t.readBTN : t.showBTN}
+                {isAudioLink(link)
+                  ? t.listenBTN
+                  : isVxhTextNote(link.fileName)
+                    ? t.readBTN
+                    : t.showBTN}
               </button>
             )}
             <button type="button" className="btn-ghost danger" onClick={() => onDelete(link.id)}>
@@ -384,6 +444,14 @@ export default function ReceivedFilesList({
                 </button>
                 <div className="download-bundle-meta">
                   {formatSize(item.totalSize)} · {t.fromWho.replace('{name}', displayName(item.peerName))}
+                  {item.receivedAt ? (
+                    <>
+                      {' · '}
+                      <time dateTime={new Date(item.receivedAt).toISOString()}>
+                        {formatReceivedAt(item.receivedAt, lang)}
+                      </time>
+                    </>
+                  ) : null}
                 </div>
                 <div className="download-bundle-actions">
                   <button
@@ -414,6 +482,14 @@ export default function ReceivedFilesList({
           );
         })
       )}
+
+      {onDeleteAll && deleteAllLabel ? (
+        <div className="downloads-delete-all">
+          <button type="button" className="downloads-delete-all-btn" onClick={onDeleteAll}>
+            {deleteAllLabel}
+          </button>
+        </div>
+      ) : null}
     </>
   );
 }

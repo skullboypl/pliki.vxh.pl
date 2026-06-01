@@ -17,7 +17,7 @@ type Props = {
 const COPY = {
   pl: {
     loading: 'Wczytywanie…',
-    tooLarge: 'Plik jest za duży do podglądu — pobierz go na dysk.',
+    tooLarge: 'Plik jest za duży do podglądu. Pobierz go na dysk.',
     empty: '(pusty plik)',
     error: 'Nie udało się odczytać pliku.',
     rendered: 'Podgląd',
@@ -28,7 +28,7 @@ const COPY = {
   },
   en: {
     loading: 'Loading…',
-    tooLarge: 'File is too large to preview — save it to disk.',
+    tooLarge: 'File is too large to preview. Save it to disk.',
     empty: '(empty file)',
     error: 'Could not read the file.',
     rendered: 'Preview',
