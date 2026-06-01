@@ -1102,6 +1102,9 @@ export default function ShareApp() {
     const onPageHide = (e: PageTransitionEvent) => {
       if (e.persisted) return;
       if (isPageReloading()) return;
+      // PWA/mobile: pagehide can fire when the OS opens a system sheet (downloads/share)
+      // or the app goes briefly to background. Do not wipe OPFS/object URLs in that case.
+      if (isStandalonePwa() || isMobile()) return;
       clearBrowserSessionMarker();
       const keep = getActiveTransferKeepNames();
       for (const link of downloadLinksRef.current) {
@@ -3036,8 +3039,19 @@ export default function ShareApp() {
     setDownloadLinks((prev) => prev.map((x) => (idSet.has(x.id) ? { ...x, isNew: false } : x)));
   };
 
-  const saveFile = (item: DownloadLink) => {
+  const saveFile = async (item: DownloadLink) => {
     try {
+      // iOS Safari: downloading MP4 from blob: via <a download> often fails with
+      // "WebKitBlobResource". Prefer the system share sheet when possible.
+      if (deviceHints.ios && item.file && navigator.canShare?.({ files: [item.file] })) {
+        await navigator.share({
+          files: [item.file],
+          title: item.fileName || 'file',
+        });
+        markFilesSaved([item.id]);
+        return;
+      }
+
       const a = document.createElement('a');
       a.href = item.url;
       a.download = item.fileName || 'file';
