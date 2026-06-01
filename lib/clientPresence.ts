@@ -11,12 +11,14 @@ type PresenceMessage = { surface: ClientSurface; at: number };
  * They share origin quota but should not share received-file lists.
  */
 export function watchOtherClientSurface(
-  onOther: (surface: ClientSurface) => void,
+  onOther: (surface: ClientSurface | null) => void,
 ): () => void {
   if (typeof BroadcastChannel === 'undefined') return () => {};
 
   const ch = new BroadcastChannel(CHANNEL);
   const me = getClientSurface();
+  let lastSeenOtherAt = 0;
+  let lastSurface: ClientSurface | null = null;
 
   const ping = () => {
     const msg: PresenceMessage = { surface: me, at: Date.now() };
@@ -27,14 +29,24 @@ export function watchOtherClientSurface(
     const data = ev.data;
     if (!data?.surface || data.surface === me) return;
     if (Date.now() - data.at > STALE_MS) return;
+    lastSeenOtherAt = Date.now();
+    lastSurface = data.surface;
     onOther(data.surface);
   };
 
   ping();
   const interval = setInterval(ping, PING_MS);
+  const staleCheck = setInterval(() => {
+    if (!lastSurface) return;
+    if (Date.now() - lastSeenOtherAt > STALE_MS) {
+      lastSurface = null;
+      onOther(null);
+    }
+  }, 1000);
 
   return () => {
     clearInterval(interval);
+    clearInterval(staleCheck);
     ch.close();
   };
 }
