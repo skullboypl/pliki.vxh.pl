@@ -1,4 +1,23 @@
 /* Preview modal styles */
+
+.preview-video-native {
+  width: 100%;
+  max-height: min(70vh, 520px);
+  background: #000;
+  border-radius: 8px;
+}
+
+.preview-video-error {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: #f5b8b8;
+  background: rgba(180, 40, 40, 0.12);
+  border: 1px solid rgba(220, 80, 80, 0.35);
+  border-radius: 8px;
+}
+
 .preview-overlay {
   position: fixed;
   inset: 0;

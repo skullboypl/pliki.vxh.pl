@@ -16,6 +16,8 @@ type ThumbLink = {
 
 type Props = {
   link: ThumbLink;
+  /** Pause video thumbs while WebRTC transfer runs (avoids decode errors on busy blob I/O). */
+  suspendVideoThumbs?: boolean;
 };
 
 const MAX_TEXT_THUMB_BYTES = 512 * 1024;
@@ -82,7 +84,7 @@ function TextListThumb({ link }: { link: ThumbLink }) {
   return <span className="download-thumb-text">{snippet || '…'}</span>;
 }
 
-export default function DownloadThumb({ link }: Props) {
+export default function DownloadThumb({ link, suspendVideoThumbs = false }: Props) {
   if (isImageLink(link)) {
     return (
       <img
@@ -96,13 +98,18 @@ export default function DownloadThumb({ link }: Props) {
   }
 
   if (isVideoLink(link)) {
+    if (suspendVideoThumbs) {
+      return (
+        <span className="download-thumb-video-badge" aria-hidden>
+          ▶
+        </span>
+      );
+    }
     return (
       <video
         src={link.url}
         className="download-thumb-media"
-        autoPlay
         muted
-        loop
         playsInline
         preload="metadata"
         aria-hidden

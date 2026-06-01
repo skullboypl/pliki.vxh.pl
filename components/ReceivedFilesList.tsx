@@ -42,6 +42,7 @@ type Props = {
   onDeleteBundle?: (ids: number[]) => void;
   onDeleteAll?: () => void;
   deleteAllLabel?: string;
+  suspendVideoThumbs?: boolean;
 };
 
 const COPY = {
@@ -257,6 +258,7 @@ export default function ReceivedFilesList({
   onDeleteBundle,
   onDeleteAll,
   deleteAllLabel,
+  suspendVideoThumbs = false,
 }: Props) {
   const t = COPY[lang];
   const [filter, setFilter] = useState<FilterKey>('all');
@@ -323,7 +325,7 @@ export default function ReceivedFilesList({
               isTextLink(link) ? t.readBTN : isAudioLink(link) ? t.listenBTN : t.showBTN
             }
           >
-            <DownloadThumb link={link} />
+            <DownloadThumb link={link} suspendVideoThumbs={suspendVideoThumbs} />
           </button>
         ) : null}
         <div className="download-row-body">

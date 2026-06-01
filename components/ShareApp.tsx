@@ -11,6 +11,12 @@ import {
   normalizeDeviceKind,
   type DeviceKind,
 } from '@/lib/device';
+import {
+  buildOpfsEntryName,
+  timestampFromOpfsEntry,
+  type ClientSurface,
+} from '@/lib/clientSurface';
+import { formatDualSurfaceWarning, watchOtherClientSurface } from '@/lib/clientPresence';
 import { IconFile, IconShareIos, IconSpinner, IconUpload, IconWifi } from '@/components/icons';
 import FileDropOverlay from '@/components/FileDropOverlay';
 import PeerQuickSend from '@/components/PeerQuickSend';
@@ -29,7 +35,6 @@ import { isAudioLink } from '@/lib/audioMedia';
 import {
   RECEIVE_RAM_LIMIT_DESKTOP,
   RECEIVE_RAM_LIMIT_MOBILE,
-  SEND_CLONE_IN_MEMORY_MAX as CLONE_IN_MEMORY_MAX_BYTES,
 } from '@/lib/fileTransferLimits';
 import {
   bytesRequiredForReceive,
@@ -176,20 +181,9 @@ const concatUint8Parts = (parts: Uint8Array[], byteLen: number): Uint8Array => {
   return out;
 };
 
-const cloneSelectedFiles = async (fileList: FileList | null): Promise<File[]> => {
-  const picked = Array.from(fileList ?? []).filter((f) => f.name && f.size > 0);
-  if (!picked.length) return [];
-  return Promise.all(
-    picked.map(async (f) => {
-      if (f.size > CLONE_IN_MEMORY_MAX_BYTES) return f;
-      const buf = await f.arrayBuffer();
-      return new File([buf], f.name, {
-        type: f.type || 'application/octet-stream',
-        lastModified: f.lastModified,
-      });
-    }),
-  );
-};
+/** Keep the picker File handle — no arrayBuffer clone (large files would fill origin storage/RAM). */
+const pickSelectedFiles = (fileList: FileList | null): File[] =>
+  Array.from(fileList ?? []).filter((f) => f.name && f.size > 0);
 
 const clearFileInputForPeer = (peerId: string, input?: HTMLInputElement | null) => {
   const el = input ?? (document.getElementById(`file-input-${peerId}`) as HTMLInputElement | null);
@@ -325,9 +319,14 @@ const MESSAGES = {
     storagePanelMeter: '{used} / ok. {limit}',
     unknownSender: 'Nieznany nadawca',
     previewClosedForTransfer: 'Podgląd wideo zamknięty na czas transferu pliku.',
+    previewVideoError:
+      'Nie można odtworzyć pliku (uszkodzony, niepełny transfer lub format nieobsługiwany). Zapisz na dysk i otwórz w odtwarzaczu.',
     storageInsecureContext:
       'Duże pliki mogą nie działać na tym adresie. Użyj połączenia z kłódką (HTTPS).',
-    storageNoStorageApi: '',
+    storageQuotaUnavailable:
+      'Nie udało się odczytać limitu z przeglądarki. Odbiór i tak zapisuje pliki na dysk (OPFS), aż zabraknie miejsca — wtedy zobaczysz błąd przy urządzeniu.',
+    storageQuotaPwaNote:
+      'W PWA limit zwykle pokazuje realne wolne miejsce na telefonie (po zezwoleniu na pamięć trwałą).',
     storageQuotaBytesLine:
       'navigator.storage.estimate(): {usageBytes} / {quotaBytes} bajtów',
     storageQuotaRawLine: 'estimate() surowe quota: {quotaBytes} B',
@@ -341,7 +340,11 @@ const MESSAGES = {
     fileLimitsRam:
       'Gdy przeglądarka nie zapisuje na dysk (np. Chrome na iPhone): powyżej ~{ramMobileMb} MB na telefonie lub ~{ramDesktopMb} MB na komputerze odbiór może się nie udać.',
     fileLimitsSend:
-      'Wysyłka plików większych niż {sendStreamMb} MB nie wczytuje całego pliku do pamięci naraz.',
+      'Wysyłka strumieniuje plik z dysku — nie zapisuje go w OPFS jak odbiór. Pasek limitu pokazuje całą stronę (np. wcześniejsze odbiory).',
+    storageQuotaWhileSending:
+      'Trwa wysyłka: plik nie trafia do OPFS. Rośnie tylko tymczasowy bufor Chrome — po zakończeniu usage zwykle spada.',
+    storageQuotaSharedOrigin:
+      'PWA i zwykła karta Chrome dzielą limit dysku tej strony (to nie są dwa dyski). Lista „Odebrane” jest osobna w każdym oknie.',
     storageModePersisted: 'PWA (zainstalowana aplikacja)',
     storageModePersistGranted: 'pamięć trwała',
     storageModePersistSafari: 'pamięć trwała (Safari)',
@@ -483,8 +486,13 @@ const MESSAGES = {
     storagePanelMeter: '{used} / about {limit}',
     unknownSender: 'Unknown sender',
     previewClosedForTransfer: 'Video preview closed while a file transfer is active.',
+    previewVideoError:
+      'Cannot play this file (corrupt, incomplete transfer, or unsupported format). Save to disk and open in a player.',
     storageInsecureContext: 'Large files may not work here. Use HTTPS (lock icon).',
-    storageNoStorageApi: '',
+    storageQuotaUnavailable:
+      'Could not read a storage limit from the browser. Receives still use disk (OPFS) until full — then you will see an error on the device row.',
+    storageQuotaPwaNote:
+      'In the installed PWA, the bar usually reflects real free space on your phone (after persistent storage is granted).',
     storageQuotaBytesLine: 'navigator.storage.estimate(): {usageBytes} / {quotaBytes} bytes',
     storageQuotaRawLine: 'raw estimate() quota: {quotaBytes} B',
     storageQuotaDevToolsHint:
@@ -497,7 +505,11 @@ const MESSAGES = {
     fileLimitsRam:
       'If the browser cannot save to disk (e.g. Chrome on iPhone): receiving above ~{ramMobileMb} MB on a phone or ~{ramDesktopMb} MB on a computer may fail.',
     fileLimitsSend:
-      'Sending files larger than {sendStreamMb} MB does not load the whole file into memory at once.',
+      'Sending streams from disk — unlike receive, it is not saved to OPFS. The meter is for the whole origin (e.g. past downloads).',
+    storageQuotaWhileSending:
+      'Sending: the file is not written to OPFS. Chrome may show a temporary spike that usually drops after the transfer.',
+    storageQuotaSharedOrigin:
+      'PWA and a normal Chrome tab share this site’s storage quota (not two separate disks). Each window has its own received-files list.',
     storageModePersisted: 'PWA (installed app)',
     storageModePersistGranted: 'persistent storage',
     storageModePersistSafari: 'persistent storage (Safari)',
@@ -793,6 +805,8 @@ export default function ShareApp() {
   const [connectingPeer, setConnectingPeer] = useState<string | null>(null);
   const [downloadLinks, setDownloadLinks] = useState<DownloadLink[]>([]);
   const [previewItem, setPreviewItem] = useState<DownloadLink | null>(null);
+  const previewBlobUrlRef = useRef<string | null>(null);
+  const [otherClientSurface, setOtherClientSurface] = useState<ClientSurface | null>(null);
   const [deleteAllConfirmOpen, setDeleteAllConfirmOpen] = useState(false);
   const [zipListModal, setZipListModal] = useState<{
     linkId: number;
@@ -975,6 +989,10 @@ export default function ShareApp() {
     }
   }, []);
 
+  useEffect(() => {
+    return watchOtherClientSurface((surface) => setOtherClientSurface(surface));
+  }, []);
+
   const opfsRestoredRef = useRef(false);
   const sessionBootDoneRef = useRef(false);
 
@@ -1032,7 +1050,7 @@ export default function ShareApp() {
               const manifest = getReceivedFileManifest(entry.entryName);
               const fileName = manifest?.fileName ?? displayNameFromOpfsEntry(entry.entryName);
               const file = entry.file;
-              const ts = Number(entry.entryName.split('_')[0]) || 0;
+              const ts = timestampFromOpfsEntry(entry.entryName);
               restored.push({
                 id: Date.now() + i++,
                 fileName,
@@ -1419,7 +1437,7 @@ export default function ShareApp() {
   async function opfsOpenWriter(fileName: string): Promise<OpfsWriterResult> {
     if (!hasOPFS()) throw new Error('OPFS not supported on this browser');
     const root = await navigator.storage.getDirectory();
-    const safeName = `${Date.now()}_${fileName}`;
+    const safeName = buildOpfsEntryName(fileName);
     const handle = await root.getFileHandle(safeName, { create: true });
     if (typeof handle.createWritable !== 'function') throw new Error('createWritable not available on OPFS handle');
     const writer = await handle.createWritable();
@@ -1811,14 +1829,10 @@ export default function ShareApp() {
     if (recvQuotaFailed.current[peerId]) return;
     if (!u8.byteLength) return;
 
+    /** End-of-transfer marker from sender — must never be written into the file (breaks MP4/MOV). */
     if (u8.byteLength === 1 && u8[0] === 0) {
-      const total = fileMetadata.current[peerId]?.size || 0;
-      const got = getReceivedBytes(peerId);
-      const pending = getInboundPendingBytes(peerId);
-      if (total > 0 && got + pending >= total) {
-        lastFileActivity.current[peerId] = performance.now();
-        return;
-      }
+      lastFileActivity.current[peerId] = performance.now();
+      return;
     }
 
     u8 = trimChunkToFileSize(peerId, u8);
@@ -2514,23 +2528,9 @@ export default function ShareApp() {
     startPeerConnection(peerId);
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>, peerId: string) => {
-    const input = e.target;
-    let files: File[];
-    try {
-      files = await cloneSelectedFiles(input.files);
-    } catch (err) {
-      const msg = safeErrMsg(err);
-      log(`⚠️ Nie można odczytać plików: ${msg}`);
-      setTransferInfo((prev) => ({
-        ...prev,
-        [peerId]: { text: t('fileReadError', { msg }), tone: 'warn' },
-      }));
-      return;
-    }
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, peerId: string) => {
+    const files = pickSelectedFiles(e.target.files);
     if (!files.length) return;
-
-    clearFileInputForPeer(peerId, input);
     queueFilesForPeer(peerId, files);
   };
 
@@ -2586,6 +2586,7 @@ export default function ShareApp() {
         MESSAGES[langRef.current].previewClosedForTransfer ??
           MESSAGES.pl.previewClosedForTransfer,
       );
+      releasePreviewBlobUrl();
       return null;
     });
   };
@@ -2722,11 +2723,11 @@ export default function ShareApp() {
     while (resumeRound <= TRANSFER_CONFIG.MAX_RESUME_ATTEMPTS) {
       if (sendAbortFlags.current[peerId]) throw new Error('cancelled');
 
-      const blob = offset === 0 ? file : file.slice(offset);
-      await sendBlobChunks(fileDc, blob, {
+      await sendBlobChunks(fileDc, file, {
         chunkSize: tuning.chunkSize,
         bufferedLow: tuning.bufferedLow,
         bufferedHigh: tuning.bufferedHigh,
+        startByteOffset: offset,
         baseOffset: offset,
         totalSize: file.size,
         abort: () => !!sendAbortFlags.current[peerId],
@@ -2750,7 +2751,6 @@ export default function ShareApp() {
               fileName: file.name,
             },
           }));
-          maybeRefreshStorageSnapshot();
         },
       });
 
@@ -2951,17 +2951,30 @@ export default function ShareApp() {
     return /\.(png|jpe?g|gif|webp|bmp|svg|mp4|webm|mov|m4v)$/i.test(name);
   };
 
+  const releasePreviewBlobUrl = () => {
+    if (!previewBlobUrlRef.current) return;
+    try {
+      URL.revokeObjectURL(previewBlobUrlRef.current);
+    } catch {
+      /* ignore */
+    }
+    previewBlobUrlRef.current = null;
+  };
+
   const openPreview = (link: DownloadLink) => {
     if (!isPreviewable(link)) return;
     if (hasActiveFileTransfer() && isVideoDownloadLink(link)) {
       log(t('previewClosedForTransfer'));
       return;
     }
-    if (!link.url) {
+    if (!link.url && !link.file) {
       log('⚠️ Brak adresu podglądu. Odśwież stronę lub zapisz plik na dysk.');
       return;
     }
-    setPreviewItem(link);
+    releasePreviewBlobUrl();
+    const url = link.file ? URL.createObjectURL(link.file) : link.url;
+    if (link.file) previewBlobUrlRef.current = url;
+    setPreviewItem({ ...link, url });
   };
 
   const shiftBundlePreview = useCallback(
@@ -2969,14 +2982,20 @@ export default function ShareApp() {
       setPreviewItem((current) => {
         if (!current) return current;
         const neighbor = findBundlePreviewNeighbor(downloadLinks, current, dir, isPreviewable);
-        if (!neighbor?.url) return current;
-        return neighbor;
+        if (!neighbor?.url && !neighbor?.file) return current;
+        releasePreviewBlobUrl();
+        const url = neighbor.file ? URL.createObjectURL(neighbor.file) : neighbor.url;
+        if (neighbor.file) previewBlobUrlRef.current = url;
+        return { ...neighbor, url };
       });
     },
     [downloadLinks],
   );
 
-  const closePreview = () => setPreviewItem(null);
+  const closePreview = () => {
+    releasePreviewBlobUrl();
+    setPreviewItem(null);
+  };
 
   const markFilesSaved = (ids: number[]) => {
     const idSet = new Set(ids);
@@ -3048,7 +3067,10 @@ export default function ShareApp() {
         }
       }
       const next = prev.filter((x) => !idSet.has(x.id));
-      if (previewItem && idSet.has(previewItem.id)) setPreviewItem(null);
+      if (previewItem && idSet.has(previewItem.id)) {
+        releasePreviewBlobUrl();
+        setPreviewItem(null);
+      }
       return next;
     });
     void refreshStorageSnapshot().then(() => {
@@ -3089,7 +3111,7 @@ export default function ShareApp() {
     enabled: fileDropReady,
     getEligiblePeers: () => peers.map((p) => ({ id: p.id, name: p.name })),
     canSendToPeer,
-    cloneFiles: cloneSelectedFiles,
+    cloneFiles: async (list) => pickSelectedFiles(list),
     onSend: (peerId, files) => queueFilesForPeer(peerId, files),
     onError: (code) => {
       if (code === 'dropNeedSetup') {
@@ -3129,6 +3151,32 @@ export default function ShareApp() {
         <h1 className="app-title">{t('appTitle')}</h1>
         <p className="app-subtitle web-only">{t('appSubtitle')}</p>
       </header>
+
+      {otherClientSurface ? (
+        <div className="dual-surface-banner" role="status">
+          {formatDualSurfaceWarning(otherClientSurface, lang)}
+        </div>
+      ) : null}
+
+      {isStandalone || isMobile() ? (
+        <section
+          className="storage-panel-top"
+          aria-label={MESSAGES[lang].storagePanelLabel}
+        >
+          <StorageQuotaPanel
+            lang={lang}
+            copy={MESSAGES[lang]}
+            snapshot={storageSnapshot}
+            isIos={deviceHints.ios || deviceHints.android}
+            isMobilePlatform={deviceHints.ios || deviceHints.android}
+            isChromeOnIos={deviceHints.ios && isChromeIOS()}
+            isStandalone={isStandalone}
+            sendingActive={Object.values(transferProgress).some((tp) => tp?.mode === 'send')}
+            showSharedOriginNote={!!otherClientSurface}
+            compact
+          />
+        </section>
+      ) : null}
 
       {isMobile() ? (
         <div className="mobile-share-guide">
@@ -3460,6 +3508,7 @@ export default function ShareApp() {
           <ReceivedFilesList
             lang={lang}
             links={downloadLinks}
+            suspendVideoThumbs={hasActiveFileTransfer()}
             displayName={dn}
             isPreviewable={isPreviewable}
             isZipListable={isZipListable}
@@ -3478,17 +3527,21 @@ export default function ShareApp() {
 
       <section className="app-guide" aria-label={lang === 'pl' ? 'Informacje' : 'Info'}>
         <div className="app-guide__card">
-          <div className="app-guide__section">
-            <StorageQuotaPanel
-              lang={lang}
-              copy={MESSAGES[lang]}
-              snapshot={storageSnapshot}
-              isIos={deviceHints.ios || deviceHints.android}
-              isMobilePlatform={deviceHints.ios || deviceHints.android}
-              isChromeOnIos={deviceHints.ios && isChromeIOS()}
-              isStandalone={isStandalone}
-            />
-          </div>
+          {!(isStandalone || isMobile()) ? (
+            <div className="app-guide__section">
+              <StorageQuotaPanel
+                lang={lang}
+                copy={MESSAGES[lang]}
+                snapshot={storageSnapshot}
+                isIos={deviceHints.ios || deviceHints.android}
+                isMobilePlatform={deviceHints.ios || deviceHints.android}
+                isChromeOnIos={deviceHints.ios && isChromeIOS()}
+                isStandalone={isStandalone}
+                sendingActive={Object.values(transferProgress).some((tp) => tp?.mode === 'send')}
+                showSharedOriginNote={!!otherClientSurface}
+              />
+            </div>
+          ) : null}
           <div className="app-guide__section app-guide__section--how web-only">
             <p className="app-guide__heading">{t('howTitle')}</p>
             <ol className="app-guide__steps">
@@ -3696,6 +3749,8 @@ export default function ShareApp() {
                   src={previewItem.url}
                   mime={previewItem.mime}
                   fileName={previewItem.fileName}
+                  fileType={previewItem.file?.type}
+                  errorMessage={t('previewVideoError')}
                 />
               ) : (
                 <img src={previewItem.url} alt={previewItem.fileName} className="preview-media" />

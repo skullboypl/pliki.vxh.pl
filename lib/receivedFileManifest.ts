@@ -1,6 +1,8 @@
-/** Persists receive metadata for OPFS files (survives page reload). */
+/** Persists receive metadata for OPFS files (survives page reload) — per PWA vs browser tab. */
 
-const STORAGE_KEY = 'vxh_received_manifest_v1';
+import { getClientSurface, type ClientSurface } from '@/lib/clientSurface';
+
+const LEGACY_STORAGE_KEY = 'vxh_received_manifest_v1';
 const MAX_ENTRIES = 400;
 
 export type ReceivedFileManifestEntry = {
@@ -18,19 +20,35 @@ export type ReceivedFileManifestEntry = {
 
 type Manifest = Record<string, ReceivedFileManifestEntry>;
 
-function readManifest(): Manifest {
+function storageKey(surface: ClientSurface = getClientSurface()): string {
+  return surface === 'pwa' ? 'vxh_received_manifest_v1_pwa' : 'vxh_received_manifest_v1_browser';
+}
+
+function readManifest(surface: ClientSurface = getClientSurface()): Manifest {
   if (typeof localStorage === 'undefined') return {};
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as Manifest;
-    return parsed && typeof parsed === 'object' ? parsed : {};
+    const raw = localStorage.getItem(storageKey(surface));
+    if (raw) {
+      const parsed = JSON.parse(raw) as Manifest;
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    }
+    if (surface === 'browser') {
+      const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (legacy) {
+        const parsed = JSON.parse(legacy) as Manifest;
+        const manifest = parsed && typeof parsed === 'object' ? parsed : {};
+        writeManifest(manifest, surface);
+        localStorage.removeItem(LEGACY_STORAGE_KEY);
+        return manifest;
+      }
+    }
+    return {};
   } catch {
     return {};
   }
 }
 
-function writeManifest(manifest: Manifest): void {
+function writeManifest(manifest: Manifest, surface: ClientSurface = getClientSurface()): void {
   if (typeof localStorage === 'undefined') return;
   const keys = Object.keys(manifest);
   if (keys.length > MAX_ENTRIES) {
@@ -40,7 +58,7 @@ function writeManifest(manifest: Manifest): void {
       .forEach((k) => delete manifest[k]);
   }
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(manifest));
+    localStorage.setItem(storageKey(surface), JSON.stringify(manifest));
   } catch {
     /* quota — ignore */
   }
@@ -77,6 +95,6 @@ export function pruneReceivedFileManifest(keepOpfsNames: ReadonlySet<string>): v
   if (changed) writeManifest(manifest);
 }
 
-export function clearReceivedFileManifest(): void {
-  writeManifest({});
+export function clearReceivedFileManifest(surface: ClientSurface = getClientSurface()): void {
+  writeManifest({}, surface);
 }

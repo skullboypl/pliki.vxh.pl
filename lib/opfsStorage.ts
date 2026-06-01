@@ -1,3 +1,9 @@
+import {
+  getClientSurface,
+  opfsEntryBelongsToSurface,
+  timestampFromOpfsEntry,
+  type ClientSurface,
+} from '@/lib/clientSurface';
 import { inspectOriginCaches, type CacheQuotaInspect } from '@/lib/cacheQuotaInspect';
 
 /** OPFS staging for incoming transfers — must be purged or origin quota fills up. */
@@ -160,15 +166,18 @@ function parseUsageDetails(raw: StorageEstimateWithDetails['usageDetails']): Sto
   };
 }
 
-export async function measureOpfsUsageBytes(): Promise<number> {
+export async function measureOpfsUsageBytes(
+  surface: ClientSurface | 'all' = getClientSurface(),
+): Promise<number> {
   if (!hasOpfsSupport()) return 0;
   let total = 0;
   try {
     const root = await navigator.storage.getDirectory();
-    for await (const [, handle] of root as unknown as AsyncIterable<
+    for await (const [name, handle] of root as unknown as AsyncIterable<
       [string, FileSystemHandle]
     >) {
       if (handle.kind !== 'file') continue;
+      if (surface !== 'all' && !opfsEntryBelongsToSurface(name, surface)) continue;
       try {
         const file = await (handle as FileSystemFileHandle).getFile();
         total += file.size;
@@ -385,11 +394,12 @@ export function formatStorageBrief(
   return line;
 }
 
-/** `timestamp_originalName` from opfsOpenWriter in ShareApp. */
+/** `pwa_1234_name` / `br_1234_name` / legacy `1234_name` from opfs writer. */
 export function displayNameFromOpfsEntry(entryName: string): string {
-  const sep = entryName.indexOf('_');
-  if (sep < 0) return entryName;
-  return entryName.slice(sep + 1) || entryName;
+  const body = entryName.replace(/^(?:pwa_|br_)/, '');
+  const sep = body.indexOf('_');
+  if (sep < 0) return body || entryName;
+  return body.slice(sep + 1) || entryName;
 }
 
 export type OpfsStoredEntry = {
@@ -397,8 +407,10 @@ export type OpfsStoredEntry = {
   file: File;
 };
 
-/** List all OPFS staging files (survives page reload). */
-export async function listOpfsStoredEntries(): Promise<OpfsStoredEntry[]> {
+/** List OPFS files for this app surface (PWA vs browser tab). */
+export async function listOpfsStoredEntries(
+  surface: ClientSurface = getClientSurface(),
+): Promise<OpfsStoredEntry[]> {
   if (!hasOpfsSupport()) return [];
   const out: OpfsStoredEntry[] = [];
   try {
@@ -406,7 +418,7 @@ export async function listOpfsStoredEntries(): Promise<OpfsStoredEntry[]> {
     for await (const [name, handle] of root as unknown as AsyncIterable<
       [string, FileSystemHandle]
     >) {
-      if (handle.kind !== 'file') continue;
+      if (handle.kind !== 'file' || !opfsEntryBelongsToSurface(name, surface)) continue;
       try {
         const file = await (handle as FileSystemFileHandle).getFile();
         out.push({ entryName: name, file });
@@ -417,11 +429,7 @@ export async function listOpfsStoredEntries(): Promise<OpfsStoredEntry[]> {
   } catch {
     /* ignore */
   }
-  out.sort((a, b) => {
-    const ta = Number(a.entryName.split('_')[0]) || 0;
-    const tb = Number(b.entryName.split('_')[0]) || 0;
-    return tb - ta;
-  });
+  out.sort((a, b) => timestampFromOpfsEntry(b.entryName) - timestampFromOpfsEntry(a.entryName));
   return out;
 }
 
@@ -441,9 +449,10 @@ export type PurgeOpfsResult = {
   removedNames: string[];
 };
 
-/** Delete OPFS files whose names are not in keepNames. */
+/** Delete OPFS files not in keepNames — only for the current PWA/browser surface. */
 export async function purgeOpfsStaging(
   keepNames: ReadonlySet<string> = new Set(),
+  surface: ClientSurface = getClientSurface(),
 ): Promise<PurgeOpfsResult> {
   const removedNames: string[] = [];
   if (!hasOpfsSupport()) return { removed: 0, removedNames };
@@ -454,6 +463,7 @@ export async function purgeOpfsStaging(
       [string, FileSystemHandle]
     >) {
       if (handle.kind !== 'file' || keepNames.has(name)) continue;
+      if (!opfsEntryBelongsToSurface(name, surface)) continue;
       try {
         await root.removeEntry(name);
         removedNames.push(name);

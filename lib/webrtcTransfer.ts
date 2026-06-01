@@ -196,6 +196,8 @@ export type SendBlobOptions = {
   bufferedHigh?: number;
   onProgress?: (sentSoFar: number, totalSize: number) => void;
   abort?: () => boolean;
+  /** Bytes already sent — resume without Blob.slice (avoids extra disk quota in Chrome). */
+  startByteOffset?: number;
   baseOffset?: number;
   totalSize?: number;
   waitIfPaused?: () => Promise<void>;
@@ -238,8 +240,9 @@ export async function sendBlobChunks(
   const chunkSize = options.chunkSize;
   const bufferedLow = options.bufferedLow ?? TRANSFER_CONFIG.BUFFERED_LOW_THRESHOLD;
   const bufferedHigh = options.bufferedHigh ?? TRANSFER_CONFIG.BUFFERED_HIGH_WATERMARK;
-  const baseOffset = options.baseOffset ?? 0;
+  const baseOffset = options.baseOffset ?? options.startByteOffset ?? 0;
   const totalSize = options.totalSize ?? blob.size + baseOffset;
+  let skipRemaining = Math.max(0, options.startByteOffset ?? 0);
   let sessionSent = 0;
   let lastUi = 0;
 
@@ -269,12 +272,27 @@ export async function sendBlobChunks(
         if (options.waitIfPaused) await options.waitIfPaused();
 
         const end = Math.min(off + chunkSize, data.byteLength);
-        const chunk = data.subarray(off, end);
+        let chunk = data.subarray(off, end);
+
+        if (skipRemaining > 0) {
+          if (skipRemaining >= chunk.byteLength) {
+            skipRemaining -= chunk.byteLength;
+            continue;
+          }
+          chunk = chunk.subarray(skipRemaining);
+          skipRemaining = 0;
+        }
+
         if (dc.bufferedAmount >= bufferedHigh) {
           options.onProgress?.(baseOffset + sessionSent, totalSize);
         }
-        await sendChunkPipelined(dc, chunk, pipeOpts);
-        sessionSent += end - off;
+        const wireChunk =
+          chunk.byteLength === chunk.buffer.byteLength &&
+          chunk.byteOffset === 0
+            ? chunk
+            : chunk.slice();
+        await sendChunkPipelined(dc, wireChunk, pipeOpts);
+        sessionSent += chunk.byteLength;
         chunksSinceYield += 1;
         if (chunksSinceYield >= 12) {
           chunksSinceYield = 0;

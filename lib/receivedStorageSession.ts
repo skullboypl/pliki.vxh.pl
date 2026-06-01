@@ -1,9 +1,16 @@
-/** Tracks browser/PWA tab session — cleared when tab/app closes; used to purge received OPFS on next open. */
+/** Tracks tab/PWA session — per surface (PWA vs browser), not shared between them. */
 
-export const RECEIVED_BROWSER_SESSION_KEY = 'vxh_recv_browser_session_v1';
+import { getClientSurface, type ClientSurface } from '@/lib/clientSurface';
 
-/** Set in beforeunload so pagehide can skip purge on F5 / hard reload. */
+const LEGACY_SESSION_KEY = 'vxh_recv_browser_session_v1';
+
 export const RECEIVED_PAGE_RELOADING_KEY = 'vxh_recv_page_reloading_v1';
+
+function sessionKey(surface: ClientSurface = getClientSurface()): string {
+  return surface === 'pwa'
+    ? 'vxh_recv_browser_session_v1_pwa'
+    : 'vxh_recv_browser_session_v1_browser';
+}
 
 export function markPageReloading(): void {
   if (typeof sessionStorage === 'undefined') return;
@@ -32,29 +39,39 @@ export function clearPageReloadingFlag(): void {
   }
 }
 
-export function isNewBrowserSession(): boolean {
+export function isNewBrowserSession(surface: ClientSurface = getClientSurface()): boolean {
   if (typeof sessionStorage === 'undefined') return true;
   try {
-    return !sessionStorage.getItem(RECEIVED_BROWSER_SESSION_KEY);
+    const key = sessionKey(surface);
+    if (sessionStorage.getItem(key)) return false;
+    if (surface === 'browser' && sessionStorage.getItem(LEGACY_SESSION_KEY)) {
+      sessionStorage.setItem(key, '1');
+      sessionStorage.removeItem(LEGACY_SESSION_KEY);
+      return false;
+    }
+    return true;
   } catch {
     return true;
   }
 }
 
-export function markBrowserSession(): void {
+export function markBrowserSession(surface: ClientSurface = getClientSurface()): void {
   if (typeof sessionStorage === 'undefined') return;
   try {
-    sessionStorage.setItem(RECEIVED_BROWSER_SESSION_KEY, '1');
+    sessionStorage.setItem(sessionKey(surface), '1');
   } catch {
     /* ignore */
   }
 }
 
-export function clearBrowserSessionMarker(): void {
+export function clearBrowserSessionMarker(surface: ClientSurface = getClientSurface()): void {
   if (typeof sessionStorage === 'undefined') return;
   try {
-    sessionStorage.removeItem(RECEIVED_BROWSER_SESSION_KEY);
+    sessionStorage.removeItem(sessionKey(surface));
   } catch {
     /* ignore */
   }
 }
+
+/** @deprecated use clearBrowserSessionMarker */
+export const RECEIVED_BROWSER_SESSION_KEY = LEGACY_SESSION_KEY;
