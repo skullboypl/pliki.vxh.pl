@@ -267,13 +267,37 @@ function pickDevToolsUsageAndQuota(
   quotaRaw: number,
   webkit: { usage: number; quota: number } | null,
 ): { usage: number; quota: number; quotaSource: StorageQuotaSource } {
+  const estimateFallback = pickEffectiveQuota(usageReported, quotaRaw, null);
+
+  const sanitize = (
+    usage: number,
+    quota: number,
+    quotaSource: StorageQuotaSource,
+  ): { usage: number; quota: number; quotaSource: StorageQuotaSource } => {
+    const u = Number(usage) || 0;
+    const q = Number(quota) || 0;
+    if (!(q > 0)) return { usage: Math.max(0, u), quota: q, quotaSource };
+
+    // Safari/WebKit occasionally reports absurd usage (e.g. hundreds of GB) even when
+    // the origin does not actually occupy that much. If usage is wildly above quota,
+    // fall back to StorageManager.estimate() values.
+    const tooHigh = u > q * 1.25 && u - q > 512 * 1024 * 1024;
+    if (tooHigh) {
+      const fallbackQuota = estimateFallback.quota;
+      const fallbackUsage = Math.min(Math.max(0, usageReported), fallbackQuota || usageReported);
+      return { usage: fallbackUsage, quota: fallbackQuota, quotaSource: estimateFallback.source };
+    }
+
+    return { usage: Math.max(0, u), quota: q, quotaSource };
+  };
+
   if (webkit && webkit.quota > 0) {
     const quota =
       normalizeChromePoolQuota(webkit.usage, webkit.quota) || webkit.quota;
-    return { usage: webkit.usage, quota, quotaSource: 'webkit-temporary' };
+    return sanitize(webkit.usage, quota, 'webkit-temporary');
   }
   const { quota, source } = pickEffectiveQuota(usageReported, quotaRaw, null);
-  return { usage: usageReported, quota, quotaSource: source };
+  return sanitize(usageReported, quota, source);
 }
 
 function emptyStorageSnapshot(

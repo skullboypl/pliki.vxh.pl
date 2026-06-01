@@ -1313,6 +1313,25 @@ export default function ShareApp() {
     const meta = fileMetadata.current[peerId];
     if (!meta) return;
     recvQuotaFailed.current[peerId] = true;
+
+    // iPhone Safari quota numbers are unreliable. Skip the quota modal with GB numbers.
+    // Abort and show a generic warning instead.
+    if (isIOS() && !isChromeIOS()) {
+      try {
+        ctrlChannels.current[peerId]?.send(
+          JSON.stringify({ type: 'file_recv_denied', reason: 'quota' }),
+        );
+      } catch {
+        /* ignore */
+      }
+      await abortReceive(peerId);
+      setTransferInfo((prev) => ({
+        ...prev,
+        [peerId]: { text: t('transferQuotaError'), tone: 'warn' },
+      }));
+      return;
+    }
+
     const snap = await getStorageSnapshot();
     log(L.quotaExceeded(formatStorageBrief(snap, lang)));
     const pos = opfsOffsets.current[peerId] || getReceivedBytes(peerId) || 0;
@@ -1464,7 +1483,11 @@ export default function ShareApp() {
 
     try {
       const incoming = meta.size || 0;
-      if (!opts?.skipQuotaCheck) {
+      // iPhone Safari (and iOS WebKit in general) frequently reports incorrect values in
+      // navigator.storage.estimate(). Don't gate receives on that signal.
+      const disableQuotaGuard = isIOS() && !isChromeIOS();
+
+      if (!opts?.skipQuotaCheck && !disableQuotaGuard) {
         const prep = await prepareStorageForReceive(incoming);
         if (prep.purgedDownloadNames.length) {
           setTransferInfo((prev) => ({
@@ -1526,7 +1549,8 @@ export default function ShareApp() {
     }
   }
 
-  const bypassRecvQuotaGuard = (peerId: string) => !!recvForceDespiteQuota.current[peerId];
+  const bypassRecvQuotaGuard = (peerId: string) =>
+    (isIOS() && !isChromeIOS()) || !!recvForceDespiteQuota.current[peerId];
 
   const drainRamInboundToOpfs = (peerId: string) => {
     const writer = opfsWriters.current[peerId];
@@ -3517,17 +3541,19 @@ export default function ShareApp() {
           <div className="app-guide app-guide--storage" aria-label={MESSAGES[lang].storagePanelLabel}>
             <div className="app-guide__card">
               <div className="app-guide__section">
-                <StorageQuotaPanel
-                  lang={lang}
-                  copy={MESSAGES[lang]}
-                  snapshot={storageSnapshot}
-                  isIos={deviceHints.ios || deviceHints.android}
-                  isMobilePlatform={deviceHints.ios || deviceHints.android}
-                  isChromeOnIos={deviceHints.ios && isChromeIOS()}
-                  isStandalone={isStandalone}
-                  sendingActive={Object.values(transferProgress).some((tp) => tp?.mode === 'send')}
-                  showSharedOriginNote={!!otherClientSurface}
-                />
+                {deviceHints.ios && !isChromeIOS() ? null : (
+                  <StorageQuotaPanel
+                    lang={lang}
+                    copy={MESSAGES[lang]}
+                    snapshot={storageSnapshot}
+                    isIos={deviceHints.ios || deviceHints.android}
+                    isMobilePlatform={deviceHints.ios || deviceHints.android}
+                    isChromeOnIos={deviceHints.ios && isChromeIOS()}
+                    isStandalone={isStandalone}
+                    sendingActive={Object.values(transferProgress).some((tp) => tp?.mode === 'send')}
+                    showSharedOriginNote={!!otherClientSurface}
+                  />
+                )}
               </div>
             </div>
           </div>
