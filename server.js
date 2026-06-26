@@ -7,6 +7,7 @@ const { Server } = require('socket.io');
 const { generateNicknameSlug } = require('./shared/nicknames.js');
 const socketRateLimit = require('./server/socketRateLimit');
 const { buildServiceWorkerScript } = require('./server/pwaServiceWorker');
+const log = require('./server/logger');
 const {
   isDevHttpsEnabled,
   getHttpsOptions,
@@ -111,9 +112,11 @@ const attachSignaling = (httpServer) => {
   io.use((socket, next) => {
     const publicIp = remoteIp(socket);
     if (!socketRateLimit.allowConnection(publicIp)) {
+      log.warn('socket rejected', { reason: 'rate_limited', ip: publicIp });
       return next(new Error('rate_limited'));
     }
     if (countClientsFromIp(publicIp) >= socketRateLimit.MAX_CONCURRENT_PER_IP) {
+      log.warn('socket rejected', { reason: 'too_many_connections', ip: publicIp });
       return next(new Error('too_many_connections'));
     }
     next();
@@ -125,6 +128,14 @@ const attachSignaling = (httpServer) => {
     clients.set(socket.id, { publicIp, name, device: 'desktop', standalone: false });
     socket.emit('assigned_name', { name, shortId: shortId(socket.id) });
     broadcastPeers(io);
+    log.event('socket.connect', {
+      id: shortId(socket.id),
+      ip: publicIp,
+      name,
+      transport: socket.conn?.transport?.name,
+      groupSize: countClientsFromIp(publicIp),
+      total: clients.size,
+    });
 
     socket.on('register_device', (payload) => {
       if (!socketRateLimit.allowMisc(socket.id)) return;
@@ -138,6 +149,11 @@ const attachSignaling = (httpServer) => {
         entry.standalone = !!payload.standalone;
       }
       broadcastPeers(io);
+      log.event('socket.register_device', {
+        id: shortId(socket.id),
+        device: entry.device,
+        standalone: entry.standalone,
+      });
     });
 
     socket.on('register_name', (rawName) => {
@@ -146,27 +162,53 @@ const attachSignaling = (httpServer) => {
       if (trimmed && clients.has(socket.id)) {
         clients.get(socket.id).name = trimmed;
         broadcastPeers(io);
+        log.event('socket.register_name', { id: shortId(socket.id), name: trimmed });
       }
     });
 
     socket.on('signal', ({ to, signal }) => {
-      if (!socketRateLimit.allowSignal(socket.id, publicIp)) return;
-      if (clients.has(to)) {
+      if (!socketRateLimit.allowSignal(socket.id, publicIp)) {
+        log.warn('signal dropped', { reason: 'rate_limited', from: shortId(socket.id), ip: publicIp });
+        return;
+      }
+      const delivered = clients.has(to);
+      if (delivered) {
         io.to(to).emit('signal', { from: socket.id, signal });
       }
+      log.event('socket.signal', {
+        from: shortId(socket.id),
+        to: shortId(to),
+        type: signal?.type,
+        delivered,
+      });
     });
 
     socket.on('request_connection', (targetId) => {
-      if (!socketRateLimit.allowRequestConnection(socket.id)) return;
-      if (clients.has(targetId)) {
+      if (!socketRateLimit.allowRequestConnection(socket.id)) {
+        log.warn('request_connection dropped', { reason: 'rate_limited', from: shortId(socket.id) });
+        return;
+      }
+      const delivered = clients.has(targetId);
+      if (delivered) {
         io.to(targetId).emit('incoming_connection_request', socket.id);
       }
+      log.event('socket.request_connection', {
+        from: shortId(socket.id),
+        to: shortId(targetId),
+        delivered,
+      });
     });
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', (reason) => {
       clients.delete(socket.id);
       io.emit('peer_disconnected', socket.id);
       broadcastPeers(io);
+      log.event('socket.disconnect', {
+        id: shortId(socket.id),
+        ip: publicIp,
+        reason,
+        total: clients.size,
+      });
     });
   });
 
@@ -247,6 +289,26 @@ app.prepare().then(() => {
     const parsedUrl = parseRequestUrl(req);
     const { pathname } = parsedUrl;
 
+    if (log.verbose && !isImmutableAsset(pathname)) {
+      const startedAt = process.hrtime.bigint();
+      res.on('finish', () => {
+        const ms = Number(process.hrtime.bigint() - startedAt) / 1e6;
+        log.event('http', {
+          method: req.method,
+          path: pathname,
+          status: res.statusCode,
+          ms: Math.round(ms),
+          ip:
+            (req.headers['x-real-ip'] ||
+              req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+              req.socket?.remoteAddress ||
+              '')
+              .toString()
+              .replace(/^::ffff:/, ''),
+        });
+      });
+    }
+
     if (pathname === '/api/build-id') {
       handleBuildIdApi(req, res);
       return;
@@ -295,6 +357,7 @@ app.prepare().then(() => {
   httpServer.listen(port, hostname, () => {
     if (devHttps && devTls) {
       printDevTlsBanner(port, hostname, devTls);
+      log.banner();
       if (httpRedirectServer) {
         console.log(`> Jeśli wpisujesz http:// — użyj portu ${redirectPort} albo od razu https://`);
       }
@@ -302,6 +365,7 @@ app.prepare().then(() => {
     }
     const mode = dev ? 'dev' : 'production';
     console.log(`> Share P2P ready on http://${hostname}:${port} (${mode})`);
+    log.banner();
     if (dev) {
       console.log('> Bez TLS: pnpm dev:http');
     }

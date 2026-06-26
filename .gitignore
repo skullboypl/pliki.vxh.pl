@@ -18,6 +18,9 @@
 # env / secrets
 .env*
 !.env.example
+# Referencyjne env do deployu (bez sekretów — tylko publiczna konfiguracja):
+!.env.caprover
+!.env.caproverDev
 
 # dev TLS (mkcert / self-signed — pnpm cert:mkcert)
 .cert/

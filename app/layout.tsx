@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Ubuntu } from 'next/font/google';
 import AppUpdateCheck from '@/components/AppUpdateCheck';
+import BetaLink from '@/components/BetaLink';
 import DevBanner from '@/components/DevBanner';
 import LegacyPwaCleanup from '@/components/LegacyPwaCleanup';
 import PwaUpdateManager from '@/components/PwaUpdateManager';
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AppUpdateCheck />
         <PwaUpdateManager />
         {children}
+        <BetaLink />
       </body>
     </html>
   );
