@@ -96,5 +96,14 @@ export function appBootScript(isDev = false): string {
       apply(d.fingerprint);
     })
     .catch(function(){});
+  if('serviceWorker'in navigator){
+    navigator.serviceWorker.addEventListener('message',function(e){
+      var d=e&&e.data;
+      if(!d||d.type!=='VXH_APP_UPDATE')return;
+      var next=d.fingerprint||metaFp();
+      if(!next)return;
+      apply(next);
+    });
+  }
 })();`;
 }

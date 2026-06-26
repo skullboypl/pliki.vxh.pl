@@ -77,6 +77,7 @@ import StorageQuotaPanel from '@/components/StorageQuotaPanel';
 import ConfirmModal from '@/components/ConfirmModal';
 import ZipContentsModal from '@/components/ZipContentsModal';
 import { APP_DISPLAY_VERSION } from '@/lib/appRelease';
+import { readEmbeddedFingerprint } from '@/lib/appVersionClient';
 import { isZipArchiveName, listZipEntries, type ZipEntryInfo } from '@/lib/zipEntryList';
 import { PeerAnimalIcon, PeerDeviceIcon } from '@/components/peer-icons';
 import {
@@ -223,6 +224,7 @@ interface HelloMessage {
   type: 'hello';
   agent?: PeerAgent;
   version?: string;
+  fingerprint?: string;
 }
 
 interface FileMetadataMessage {
@@ -469,6 +471,10 @@ const MESSAGES = {
     transferCancelledRemote: 'Nadawca anulował transfer',
     transferRetrying: 'Uzupełnianie brakujących danych… ({pct}%)',
     transferIncomplete: 'Transfer niekompletny. Spróbuj ponownie.',
+    versionMismatch:
+      'Różne wersje aplikacji na urządzeniach. Odśwież oba (najlepiej zamknij PWA i otwórz ponownie), potem spróbuj jeszcze raz.',
+    transferStalledWifi:
+      'Transfer stoi w miejscu. Jesteś na WiFi 6 GHz? Spróbuj przełączyć oba urządzenia na 5 GHz lub 2,4 GHz (ta sama sieć). Pomaga też wyłączenie izolacji klientów na routerze.',
     transferConfirming: 'Wysłano, czekam na zapis u odbiorcy…',
     fileReadError: 'Nie można odczytać pliku: {msg}',
     showBTN: 'Podgląd',
@@ -639,6 +645,10 @@ const MESSAGES = {
     transferCancelledRemote: 'Sender cancelled the transfer',
     transferRetrying: 'Recovering missing data… ({pct}%)',
     transferIncomplete: 'Transfer incomplete. Please try again.',
+    versionMismatch:
+      'App versions differ between devices. Refresh both (close and reopen the PWA if installed), then try again.',
+    transferStalledWifi:
+      'Transfer is stuck. Are you on 6 GHz WiFi? Try switching both devices to 5 GHz or 2.4 GHz (same network). Disabling client isolation on the router also helps.',
     transferConfirming: 'Sent, waiting for receiver to finish saving…',
     fileReadError: 'Could not read file: {msg}',
     showBTN: 'Preview',
@@ -868,8 +878,12 @@ export default function ShareApp() {
   const sendBatches = useRef<Record<string, SendBatch>>({});
   const pendingFileChunks = useRef<Record<string, Uint8Array[]>>({});
   const peerAgent = useRef<Record<string, PeerAgent>>({});
+  const peerFingerprints = useRef<Record<string, string>>({});
+  const stallWatch = useRef<Record<string, { bytes: number; since: number; hinted: boolean }>>({});
   const peerNamesRef = useRef(peerNames);
   const langRef = useRef(lang);
+  const transferProgressRef = useRef(transferProgress);
+  transferProgressRef.current = transferProgress;
   const [pendingSendPeerId, setPendingSendPeerId] = useState<string | null>(null);
   const [storageSnapshot, setStorageSnapshot] = useState<StorageSnapshot | null>(null);
   const downloadsRef = useRef<HTMLDivElement | null>(null);
@@ -938,6 +952,52 @@ export default function ShareApp() {
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [refreshStorageSnapshot]);
+
+  // Watchdog: brak postępu transferu przez ~12 s → podpowiedź sieciowa (WiFi 6 GHz / izolacja klientów).
+  useEffect(() => {
+    const STALL_MS = 12_000;
+    const timer = window.setInterval(() => {
+      const progress = transferProgressRef.current;
+      const now = Date.now();
+      const activePeers = new Set<string>();
+
+      for (const [peerId, tp] of Object.entries(progress)) {
+        const total = tp?.total || 0;
+        if (!total || !tp?.mode) continue;
+        const done = tp.mode === 'send' ? tp.sent || 0 : tp.received || 0;
+        if (done >= total) continue;
+        activePeers.add(peerId);
+
+        const prev = stallWatch.current[peerId];
+        if (!prev || prev.bytes !== done) {
+          // Transfer ruszył: jeśli wcześniej pokazaliśmy podpowiedź, sprzątamy ją.
+          if (prev?.hinted) {
+            setTransferInfo((info) => {
+              if (info[peerId]?.text !== t('transferStalledWifi')) return info;
+              const next = { ...info };
+              delete next[peerId];
+              return next;
+            });
+          }
+          stallWatch.current[peerId] = { bytes: done, since: now, hinted: false };
+          continue;
+        }
+        if (!prev.hinted && now - prev.since >= STALL_MS) {
+          prev.hinted = true;
+          setTransferInfo((info) => {
+            if (info[peerId]?.text === t('transferStalledWifi')) return info;
+            return { ...info, [peerId]: { text: t('transferStalledWifi'), tone: 'warn' } };
+          });
+        }
+      }
+
+      for (const peerId of Object.keys(stallWatch.current)) {
+        if (!activePeers.has(peerId)) delete stallWatch.current[peerId];
+      }
+    }, 3000);
+    return () => window.clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang]);
 
   const applyPurgedDownloadEntries = useCallback((removedNames: string[]) => {
     if (!removedNames.length) return;
@@ -2126,7 +2186,15 @@ export default function ShareApp() {
         return n;
       });
       try {
-        dc.send(JSON.stringify({ type: 'hello', agent: isMobile() ? 'mobile' : 'web', version }));
+        const fp = readEmbeddedFingerprint() || '';
+        dc.send(
+          JSON.stringify({
+            type: 'hello',
+            agent: isMobile() ? 'mobile' : 'web',
+            version,
+            fingerprint: fp,
+          }),
+        );
       } catch {
         /* ignore */
       }
@@ -2139,6 +2207,20 @@ export default function ShareApp() {
         const msg = JSON.parse(dataStr) as CtrlMessage;
         if (msg.type === 'hello') {
           peerAgent.current[peerId] = (msg as HelloMessage).agent || 'web';
+          const theirFp = (msg as HelloMessage).fingerprint?.trim() || '';
+          if (theirFp) {
+            peerFingerprints.current[peerId] = theirFp;
+            const ours = readEmbeddedFingerprint();
+            if (ours && theirFp !== ours) {
+              log(
+                `WARN: wersja peer różna (${theirFp} vs ${ours}) — odśwież oba urządzenia`,
+              );
+              setTransferInfo((prev) => ({
+                ...prev,
+                [peerId]: { text: t('versionMismatch'), tone: 'warn' },
+              }));
+            }
+          }
           log(`CTRL hello od ${whoLabel(peerNamesRef.current, peerId, langRef.current)} agent=${peerAgent.current[peerId]}`);
           return;
         }
@@ -2802,7 +2884,12 @@ export default function ShareApp() {
         totalSize: file.size,
         abort: () => !!sendAbortFlags.current[peerId],
         waitIfPaused: async () => {
+          const deadline = Date.now() + 120_000;
           while (sendFlowPaused.current[peerId]) {
+            if (Date.now() > deadline) {
+              log('WARN: flow_pause timeout — kontynuuję wysyłkę');
+              break;
+            }
             await sleep(25);
           }
         },

@@ -1,3 +1,5 @@
+import { syncAppVersionIfStale } from '@/lib/appVersionClient';
+
 const SW_URL = '/sw.js';
 const UPDATE_INTERVAL_MS = 5 * 60_000;
 
@@ -31,6 +33,14 @@ function bindControllerChangeReload(): void {
   });
 }
 
+function bindSwUpdateMessage(): void {
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    const data = event.data as { type?: string; fingerprint?: string } | null;
+    if (data?.type !== 'VXH_APP_UPDATE') return;
+    void syncAppVersionIfStale();
+  });
+}
+
 async function pollForUpdates(registration: ServiceWorkerRegistration): Promise<void> {
   try {
     await registration.update();
@@ -51,6 +61,7 @@ export async function registerPwaUpdateService(): Promise<void> {
 
   try {
     bindControllerChangeReload();
+    bindSwUpdateMessage();
 
     const registration = await navigator.serviceWorker.register(SW_URL, {
       scope: '/',

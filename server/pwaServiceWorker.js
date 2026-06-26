@@ -11,12 +11,16 @@ self.addEventListener('install',function(){
 self.addEventListener('activate',function(e){
   e.waitUntil((async function(){
     var keys=await caches.keys();
-    await Promise.all(
-      keys
-        .filter(function(k){return k.indexOf('vxh-')===0&&k!==CACHE;})
-        .map(function(k){return caches.delete(k);})
-    );
+    var stale=keys.filter(function(k){return k.indexOf('vxh-')===0&&k!==CACHE;});
+    await Promise.all(stale.map(function(k){return caches.delete(k);}));
     await self.clients.claim();
+    if(!stale.length)return;
+    var clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+    for(var i=0;i<clients.length;i++){
+      try{
+        clients[i].postMessage({type:'VXH_APP_UPDATE',fingerprint:F});
+      }catch(err){}
+    }
   })());
 });
 
