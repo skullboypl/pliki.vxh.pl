@@ -7,7 +7,7 @@ export const HOME_COPY = {
     title: 'pliki.vxh.pl: wyślij plik w WiFi bez aplikacji',
     shortTitle: 'Wyślij plik | pliki.vxh.pl',
     description:
-      'Przesyłaj pliki między telefonem, komputerem i tabletem w tej samej sieci WiFi. Bez instalacji aplikacji, bez chmury i bez rejestracji. Transfer P2P w sieci lokalnej (LAN) przez WebRTC.',
+      'Przesyłaj pliki między telefonem, komputerem i tabletem w tej samej sieci LAN. Bez instalacji aplikacji, bez chmury i bez rejestracji. Transfer P2P w sieci lokalnej przez WebRTC.',
     keywords: [
       'pliki.vxh.pl',
       'wyślij plik wifi',
@@ -26,7 +26,7 @@ export const HOME_COPY = {
     title: 'pliki.vxh.pl: send files on WiFi, no app needed',
     shortTitle: 'Send files | pliki.vxh.pl',
     description:
-      'Transfer files between phone, PC and tablet on the same WiFi network. No app install, no cloud upload, no signup. Direct P2P over your local network (LAN) via WebRTC.',
+      'Transfer files between phone, PC and tablet on the same LAN. No app install, no cloud upload, no signup. Direct P2P over your local network via WebRTC.',
     keywords: [
       'pliki.vxh.pl',
       'send file wifi',
@@ -150,7 +150,7 @@ export function jsonLdHome() {
       description: pl.description,
       applicationCategory: 'UtilitiesApplication',
       operatingSystem: 'Any (browser)',
-      browserRequirements: 'Requires JavaScript. Devices must be on the same WiFi or LAN.',
+      browserRequirements: 'Requires JavaScript. Devices must be on the same LAN.',
       softwareVersion: process.env.NEXT_PUBLIC_APP_VERSION,
       offers: {
         '@type': 'Offer',

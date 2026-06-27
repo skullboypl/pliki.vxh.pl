@@ -46,8 +46,8 @@ export default async function SeoHubPage({ params }: Props) {
         </Link>
         <span className="seo-cta-hint">
           {lang === 'pl'
-            ? 'Ta sama sieć WiFi na dwóch urządzeniach. HTTPS lub localhost.'
-            : 'Same WiFi on two devices. HTTPS or localhost.'}
+            ? 'Dwa urządzenia w tej samej sieci WiFi/LAN. HTTPS lub localhost.'
+            : 'Two devices on the same WiFi/LAN. HTTPS or localhost.'}
         </span>
       </div>
       <SeoFeaturesStrip lang={lang} />

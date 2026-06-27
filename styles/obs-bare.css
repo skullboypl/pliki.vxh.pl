@@ -1,0 +1,108 @@
+/* OBS Browser Source — zero chrome, wypełnia dokładnie viewport źródła OBS */
+
+:root {
+  --obs-w: 1920px;
+  --obs-h: 1080px;
+}
+
+html.obs-bare,
+body.obs-bare {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100vw;
+  height: 100vh;
+  min-width: 0;
+  min-height: 0;
+  max-width: 100vw;
+  max-height: 100vh;
+  overflow: hidden !important;
+  background: #000;
+  display: block !important;
+}
+
+/* Ukryj scrollbary gdyby treść chwilowo przekroczyła viewport */
+html.obs-bare,
+body.obs-bare {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html.obs-bare::-webkit-scrollbar,
+body.obs-bare::-webkit-scrollbar,
+.camera-share-obs::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+/* Wskaźnik / przyciski dev Next.js na stronie OBS */
+body.obs-bare nextjs-portal,
+body.obs-bare [data-next-badge-root],
+body.obs-bare [data-nextjs-toast],
+body.obs-bare #__next-build-watcher,
+body.obs-bare #__next-prerender-indicator {
+  display: none !important;
+}
+
+.camera-share-obs {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  background: #000;
+  overflow: hidden;
+}
+
+.camera-share-obs__video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  background: #000;
+}
+
+.camera-share-obs__video--flip {
+  transform: scaleX(-1);
+}
+
+.camera-share-obs__video--hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.camera-share-obs__ctx {
+  position: fixed;
+  z-index: 9999;
+  min-width: 140px;
+  padding: 4px 0;
+  border-radius: 8px;
+  border: 1px solid #333;
+  background: #1a1a1a;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+}
+
+.camera-share-obs__ctx-item {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  color: #e8e8e8;
+  font-size: 0.85rem;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.camera-share-obs__ctx-item:hover:not(:disabled) {
+  background: rgba(108, 190, 69, 0.15);
+  color: #a8e88a;
+}
+
+.camera-share-obs__ctx-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

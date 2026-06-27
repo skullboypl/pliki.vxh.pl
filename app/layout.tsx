@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from 'next';
-import { Ubuntu } from 'next/font/google';
-import AppUpdateCheck from '@/components/AppUpdateCheck';
+import { headers } from 'next/headers';
+import { Ubuntu } from 'next/font/google';import AppUpdateCheck from '@/components/AppUpdateCheck';
 import BetaLink from '@/components/BetaLink';
+import DevAppTabs from '@/components/DevAppTabs';
 import DevBanner from '@/components/DevBanner';
 import LegacyPwaCleanup from '@/components/LegacyPwaCleanup';
 import PwaUpdateManager from '@/components/PwaUpdateManager';
-import { isDevBannerEnabled } from '@/lib/devSite';
+import { isCameraShareEnabled, isDevBannerEnabled } from '@/lib/devSite';
 import { appBootScript } from '@/lib/appBootScript';
 import { buildHomeMetadata } from '@/lib/seo/appMeta';
 import './globals.css';
@@ -27,36 +28,52 @@ export const viewport: Viewport = {
   colorScheme: 'dark',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const appFingerprint = process.env.APP_FINGERPRINT ?? 'unknown@0';
   const devBanner = isDevBannerEnabled();
+  const cameraShare = isCameraShareEnabled();
+  const hdrs = await headers();
+  const obsBare = hdrs.get('x-obs-bare') === '1';
 
   return (
-    <html lang="pl" className={ubuntu.className} suppressHydrationWarning>
+    <html
+      lang="pl"
+      className={`${ubuntu.className}${obsBare ? ' obs-bare' : ''}`}
+      suppressHydrationWarning
+    >
       <head>
-        <link rel="manifest" href="/manifest.webmanifest" />
+        {!obsBare ? <link rel="manifest" href="/manifest.webmanifest" /> : null}
         <meta name="vxh-app-version" content={appFingerprint} />
         <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <meta httpEquiv="Pragma" content="no-cache" />
         <meta httpEquiv="Expires" content="0" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: appBootScript(process.env.NODE_ENV !== 'production'),
-          }}
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `document.querySelectorAll('body link[rel="manifest"],body link[rel="icon"],body link[rel="apple-touch-icon"]').forEach(function(el){document.head.appendChild(el);});`,
-          }}
-        />
+        {!obsBare ? (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: appBootScript(process.env.NODE_ENV !== 'production'),
+            }}
+          />
+        ) : null}
+        {!obsBare ? (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `document.querySelectorAll('body link[rel="manifest"],body link[rel="icon"],body link[rel="apple-touch-icon"]').forEach(function(el){document.head.appendChild(el);});`,
+            }}
+          />
+        ) : null}
       </head>
-      <body className={devBanner ? 'has-dev-banner' : undefined}>
-        {devBanner ? <DevBanner /> : null}
-        <LegacyPwaCleanup />
-        <AppUpdateCheck />
-        <PwaUpdateManager />
+      <body
+        className={
+          obsBare ? 'obs-bare' : devBanner ? 'has-dev-banner' : undefined
+        }
+      >
+        {!obsBare && devBanner ? <DevBanner /> : null}
+        {!obsBare ? <DevAppTabs enabled={cameraShare} /> : null}
+        {!obsBare ? <LegacyPwaCleanup /> : null}
+        {!obsBare ? <AppUpdateCheck /> : null}
+        {!obsBare ? <PwaUpdateManager /> : null}
         {children}
-        <BetaLink />
+        {!obsBare ? <BetaLink /> : null}
       </body>
     </html>
   );

@@ -202,6 +202,13 @@ export default function SeoTopicIcon({ id, size = 22 }: Props) {
           <path d="M12 7v3M12 13v3" />
         </SvgWrap>
       );
+    case 'camera':
+      return (
+        <SvgWrap size={size}>
+          <path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.2l.9-1.5h6.8L16.3 6h1.2A2.5 2.5 0 0 1 20 8.5v8A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5z" />
+          <circle cx="12" cy="12.3" r="3.1" />
+        </SvgWrap>
+      );
     default:
       return (
         <SvgWrap size={size}>

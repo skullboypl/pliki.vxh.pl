@@ -24,6 +24,7 @@ export const TOPIC_HUB_META: Record<
   faq: { category: 'start', hubOrder: 4 },
   'drag-drop': { category: 'features', hubOrder: 10 },
   'file-bundles': { category: 'features', hubOrder: 11 },
+  'camera-share': { category: 'features', hubOrder: 12 },
   'lan-transfer': { category: 'network', hubOrder: 20 },
   'p2p-offline': { category: 'network', hubOrder: 21 },
   'fast-wifi': { category: 'network', hubOrder: 22 },

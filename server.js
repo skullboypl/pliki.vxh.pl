@@ -47,12 +47,28 @@ const requestProtocol = devHttps ? 'https' : 'http';
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
-/** @type {Map<string, { publicIp: string, name: string, device: string, standalone: boolean }>} */
+/**
+ * Ulotny stan połączenia. OBS link jest samowystarczalny (token + PIN + rozmiar w URL),
+ * serwer nic nie zapisuje na dysku ani między restartami. PIN żyje tylko póki OBS jest połączony.
+ * @type {Map<string, { publicIp: string, name: string, device: string, standalone: boolean, app: string, obsPin: string | null, registered: boolean }>}
+ */
 const clients = new Map();
+
+/** verifiedObs: `${fromSocketId}:${toSocketId}` -> timestamp (ulotny grant na czas połączenia) */
+const verifiedObs = new Map();
+const OBS_PIN_GRANT_MS = 10 * 60 * 1000;
 
 const DEVICE_KINDS = new Set(['desktop', 'iphone', 'ipad', 'android', 'mobile']);
 
-const normalizeDevice = (value) => (DEVICE_KINDS.has(value) ? value : 'desktop');
+const normalizeDevice = (value) => {
+  if (value === 'obs') return 'obs';
+  return DEVICE_KINDS.has(value) ? value : 'desktop';
+};
+
+/** Tab/feature room — peers only see others in the same app surface ('files' | 'camera'). */
+const APP_SURFACES = new Set(['files', 'camera']);
+
+const normalizeApp = (value) => (APP_SURFACES.has(value) ? value : 'files');
 
 const remoteIp = (socket) =>
   (socket.handshake.headers['x-real-ip'] ||
@@ -65,6 +81,21 @@ const groupKey = (ip) => ip;
 
 const shortId = (socketId) => socketId.slice(-4).toUpperCase();
 
+/** Kolejny wolny numer dla OBS w danej grupie sieci, np. "OBS #1". */
+const nextObsName = (publicIp, selfSocketId) => {
+  const used = new Set();
+  for (const [id, data] of clients.entries()) {
+    if (id === selfSocketId) continue;
+    if (data.publicIp === publicIp && data.device === 'obs') {
+      const m = /#(\d+)$/.exec(data.name || '');
+      if (m) used.add(Number(m[1]));
+    }
+  }
+  let n = 1;
+  while (used.has(n)) n += 1;
+  return `OBS #${n}`;
+};
+
 const namesInGroup = (publicIp) => {
   const used = new Set();
   for (const [, data] of clients.entries()) {
@@ -74,9 +105,13 @@ const namesInGroup = (publicIp) => {
 };
 
 const broadcastPeers = (io) => {
+  // Group by public IP + app surface so 'files' and 'camera' tabs have separate device lists.
   const groups = new Map();
   for (const [id, data] of clients.entries()) {
-    const key = groupKey(data.publicIp);
+    // Pomiń sockety, które jeszcze nie zadeklarowały zakładki (np. OBS przed obs_join),
+    // żeby nie migały w niewłaściwej grupie (np. OBS w zakładce Pliki).
+    if (!data.registered) continue;
+    const key = `${groupKey(data.publicIp)}|${normalizeApp(data.app)}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push({
       id,
@@ -84,10 +119,12 @@ const broadcastPeers = (io) => {
       shortId: shortId(id),
       device: normalizeDevice(data.device),
       standalone: !!data.standalone,
+      obs: data.device === 'obs',
     });
   }
   for (const [id, data] of clients.entries()) {
-    const list = groups.get(groupKey(data.publicIp))?.filter((p) => p.id !== id) || [];
+    const key = `${groupKey(data.publicIp)}|${normalizeApp(data.app)}`;
+    const list = groups.get(key)?.filter((p) => p.id !== id) || [];
     io.to(id).emit('local_peers_update', list);
   }
 };
@@ -125,7 +162,15 @@ const attachSignaling = (httpServer) => {
   io.on('connection', (socket) => {
     const publicIp = remoteIp(socket);
     const name = generateNicknameSlug(namesInGroup(publicIp));
-    clients.set(socket.id, { publicIp, name, device: 'desktop', standalone: false });
+    clients.set(socket.id, {
+      publicIp,
+      name,
+      device: 'desktop',
+      standalone: false,
+      app: 'files',
+      obsPin: null,
+      registered: false,
+    });
     socket.emit('assigned_name', { name, shortId: shortId(socket.id) });
     broadcastPeers(io);
     log.event('socket.connect', {
@@ -147,12 +192,15 @@ const attachSignaling = (httpServer) => {
       } else if (payload && typeof payload === 'object') {
         entry.device = normalizeDevice(payload.device);
         entry.standalone = !!payload.standalone;
+        if (payload.app !== undefined) entry.app = normalizeApp(payload.app);
       }
+      entry.registered = true;
       broadcastPeers(io);
       log.event('socket.register_device', {
         id: shortId(socket.id),
         device: entry.device,
         standalone: entry.standalone,
+        app: entry.app,
       });
     });
 
@@ -166,10 +214,55 @@ const attachSignaling = (httpServer) => {
       }
     });
 
+    socket.on('obs_join', (payload, ack) => {
+      if (!socketRateLimit.allowMisc(socket.id)) return;
+      const entry = clients.get(socket.id);
+      if (!entry) {
+        if (typeof ack === 'function') ack({ ok: false, error: 'invalid' });
+        return;
+      }
+      // Link jest samowystarczalny: PIN przychodzi z URL (hash), serwer nic nie pamięta.
+      const pin = String(payload?.pin || '').trim().slice(0, 12) || null;
+      entry.device = 'obs';
+      entry.app = 'camera';
+      entry.obsPin = pin;
+      entry.registered = true;
+      entry.name = nextObsName(entry.publicIp, socket.id);
+      broadcastPeers(io);
+      log.event('obs.join', { id: shortId(socket.id), gated: !!pin });
+      if (typeof ack === 'function') ack({ ok: true });
+    });
+
+    socket.on('obs_verify_pin', (payload, ack) => {
+      if (!socketRateLimit.allowMisc(socket.id)) return;
+      const to = String(payload?.to || '');
+      const pin = String(payload?.pin || '').trim();
+      const target = clients.get(to);
+      if (!target || target.device !== 'obs') {
+        if (typeof ack === 'function') ack({ ok: false, error: 'not_obs' });
+        return;
+      }
+      const ok = !!target.obsPin && target.obsPin === pin;
+      if (ok) verifiedObs.set(`${socket.id}:${to}`, Date.now());
+      log.event('obs.verify_pin', { from: shortId(socket.id), to: shortId(to), ok });
+      if (typeof ack === 'function') ack({ ok });
+    });
+
     socket.on('signal', ({ to, signal }) => {
       if (!socketRateLimit.allowSignal(socket.id, publicIp)) {
         log.warn('signal dropped', { reason: 'rate_limited', from: shortId(socket.id), ip: publicIp });
         return;
+      }
+      const target = clients.get(to);
+      // Gate tylko gdy OBS ma PIN (link z PIN-em). Link bez PIN-u = otwarty odbiór w LAN.
+      if (target?.device === 'obs' && target.obsPin) {
+        const grantKey = `${socket.id}:${to}`;
+        const grantedAt = verifiedObs.get(grantKey);
+        if (!grantedAt || Date.now() - grantedAt > OBS_PIN_GRANT_MS) {
+          socket.emit('obs_pin_required', { to });
+          log.warn('signal blocked obs pin', { from: shortId(socket.id), to: shortId(to) });
+          return;
+        }
       }
       const delivered = clients.has(to);
       if (delivered) {
@@ -200,6 +293,9 @@ const attachSignaling = (httpServer) => {
     });
 
     socket.on('disconnect', (reason) => {
+      for (const key of verifiedObs.keys()) {
+        if (key.startsWith(`${socket.id}:`) || key.endsWith(`:${socket.id}`)) verifiedObs.delete(key);
+      }
       clients.delete(socket.id);
       io.emit('peer_disconnected', socket.id);
       broadcastPeers(io);

@@ -106,6 +106,7 @@ export function buildHubMetadata(lang: SeoLang): Metadata {
           'lan p2p',
           'pliki.vxh.pl',
           'przesyłanie plików bez aplikacji',
+          'kamera lan obs',
         ]
       : [
           'file transfer guides',
@@ -113,6 +114,7 @@ export function buildHubMetadata(lang: SeoLang): Metadata {
           'lan p2p',
           'pliki.vxh.pl',
           'local network file sharing',
+          'camera lan obs',
         ];
 
   return baseMetadata(lang, seo.title, seo.description, url, keywords, 'website', {

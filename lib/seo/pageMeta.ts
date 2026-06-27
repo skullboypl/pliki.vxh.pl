@@ -11,12 +11,12 @@ const PAGE_SEO: Record<string, Record<SeoLang, PageSeoCopy>> = {
     pl: {
       title: 'Wyślij plik przez WiFi bez aplikacji',
       description:
-        'Prześlij pliki między telefonem a komputerem w tej samej WiFi. Bez chmury, konta i instalacji. P2P w LAN na pliki.vxh.pl.',
+        'Prześlij pliki między telefonem a komputerem w tej samej sieci LAN. Bez chmury, konta i instalacji. P2P lokalnie.',
     },
     en: {
       title: 'Send files over WiFi without an app',
       description:
-        'Transfer files between phone and PC on the same WiFi. No cloud, account, or install. P2P on your LAN with pliki.vxh.pl.',
+        'Transfer files between phone and PC on the same LAN. No cloud, account, or install. Local P2P with pliki.vxh.pl.',
     },
   },
   'lan-transfer': {
@@ -119,7 +119,7 @@ const PAGE_SEO: Record<string, Record<SeoLang, PageSeoCopy>> = {
     pl: {
       title: 'Pliki w domowej sieci WiFi',
       description:
-        'Rodzina w domu: telefony, tablety i PC w jednej WiFi. Szybkie wysyłanie plików przez przeglądarkę bez konfiguracji NAS.',
+        'Rodzina w domu: telefony, tablety i PC w jednej sieci LAN. Szybkie wysyłanie plików przez przeglądarkę bez konfiguracji NAS.',
     },
     en: {
       title: 'Home network file sharing',
@@ -143,7 +143,7 @@ const PAGE_SEO: Record<string, Record<SeoLang, PageSeoCopy>> = {
     pl: {
       title: 'Jak działa wysyłanie plików P2P?',
       description:
-        'Ta sama WiFi, lista urządzeń, WebRTC i sekcja „Odebrane pliki”. Instrukcja: wiele plików, paczki, drag and drop i PWA.',
+        'Ta sama sieć LAN, lista urządzeń, WebRTC i sekcja „Odebrane pliki”. Instrukcja: wiele plików, paczki, drag and drop i PWA.',
     },
     en: {
       title: 'How P2P file sending works',
@@ -271,18 +271,30 @@ const PAGE_SEO: Record<string, Record<SeoLang, PageSeoCopy>> = {
         'One send, many files. Receiver sees a bundle, saves ZIP or individual files. Bundle guide.',
     },
   },
+  'camera-share': {
+    pl: {
+      title: 'Zakładka Camera: kamera w LAN i OBS',
+      description:
+        'Podgląd kamery na żywo w LAN, bez chmury. Link do OBS Browser Source, PIN, mikrofon i widoczność w całej sieci lokalnej.',
+    },
+    en: {
+      title: 'Camera tab: LAN video and OBS',
+      description:
+        'Live camera on LAN, no cloud. OBS Browser Source link, PIN, optional mic, visible to everyone on the local network.',
+    },
+  },
 };
 
 const HUB_SEO: Record<SeoLang, PageSeoCopy> = {
   pl: {
     title: 'Poradniki: pliki w WiFi bez aplikacji',
     description:
-      'Poradniki pliki.vxh.pl: LAN, P2P, iPhone, paczki, drag and drop i PWA. Wyszukaj temat lub otwórz aplikację w tej samej WiFi.',
+      'Poradniki pliki.vxh.pl: LAN, P2P, iPhone, paczki, drag and drop, PWA i zakładka Camera (OBS). Wyszukaj temat lub otwórz aplikację w tej samej sieci LAN.',
   },
   en: {
     title: 'Guides: WiFi file transfer, no app',
     description:
-      'pliki.vxh.pl guides: LAN, P2P, iPhone, bundles, drag and drop, and PWA. Search a topic or open the app on the same WiFi.',
+      'pliki.vxh.pl guides: LAN, P2P, iPhone, bundles, drag and drop, PWA, and the Camera tab (OBS). Search a topic or open the app on the same LAN.',
   },
 };
 

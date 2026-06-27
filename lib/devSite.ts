@@ -17,3 +17,9 @@ export function isDevBannerEnabled(): boolean {
   const flag = process.env.NEXT_PUBLIC_DEV_BANNER?.trim().toLowerCase();
   return flag === '1' || flag === 'true' || flag === 'yes';
 }
+
+/** Camera share tab + /camera — włącz: CAMERA_SHARE=true (runtime, force-dynamic layout). */
+export function isCameraShareEnabled(): boolean {
+  const flag = process.env.CAMERA_SHARE?.trim().toLowerCase();
+  return flag === '1' || flag === 'true' || flag === 'yes';
+}

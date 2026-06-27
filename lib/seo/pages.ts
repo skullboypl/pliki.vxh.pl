@@ -23,7 +23,8 @@ export type SeoTopicIconId =
   | 'pwa'
   | 'drag'
   | 'bundle'
-  | 'zip';
+  | 'zip'
+  | 'camera';
 
 export interface SeoSection {
   title: string;
@@ -40,6 +41,12 @@ export interface SeoPage {
   keywords: Record<SeoLang, string[]>;
   h1: Record<SeoLang, string>;
   sections: Record<SeoLang, SeoSection[]>;
+  /** Opcjonalny przycisk CTA (np. zakładka Camera zamiast głównej aplikacji). */
+  cta?: {
+    href: string;
+    label: Record<SeoLang, string>;
+    hint?: Record<SeoLang, string>;
+  };
 }
 
 export const SEO_PAGES: SeoPage[] = [
@@ -53,8 +60,8 @@ export const SEO_PAGES: SeoPage[] = [
       en: 'Send files over WiFi: fast, no cloud | pliki.vxh.pl',
     },
     description: {
-      pl: 'Wyślij plik między telefonem a komputerem w tej samej sieci WiFi. Bez rejestracji i bez limitu chmury. Transfer P2P w LAN.',
-      en: 'Send files between phone and PC on the same WiFi. No signup and no cloud quota. Direct P2P transfer on your LAN.',
+      pl: 'Wyślij plik między telefonem a komputerem w tej samej sieci LAN. Bez rejestracji i bez limitu chmury. Transfer P2P lokalnie.',
+      en: 'Send files between phone and PC on the same LAN. No signup and no cloud quota. Direct local P2P transfer.',
     },
     keywords: {
       pl: ['wyślij plik wifi', 'transfer plików', 'lan', 'p2p'],
@@ -69,7 +76,7 @@ export const SEO_PAGES: SeoPage[] = [
         {
           title: 'Jak to działa',
           paragraphs: [
-            'Otwórz pliki.vxh.pl na dwóch urządzeniach w tej samej sieci WiFi. Ustaw nick (opcjonalnie), wybierz odbiorcę z listy i wyślij jeden lub wiele plików naraz. Możesz też przeciągnąć pliki na kartę urządzenia albo upuścić je na stronie (PC i PWA).',
+            'Otwórz pliki.vxh.pl na dwóch urządzeniach w tej samej sieci LAN (WiFi, Ethernet albo hotspot). Ustaw nick (opcjonalnie), wybierz odbiorcę z listy i wyślij jeden lub wiele plików naraz. Możesz też przeciągnąć pliki na kartę urządzenia albo upuścić je na stronie (PC i PWA).',
             'Dane idą bezpośrednio między urządzeniami (WebRTC). Serwer pomaga tylko pokazać listę urządzeń w sieci, nie trzyma Twoich plików.',
           ],
         },
@@ -84,7 +91,7 @@ export const SEO_PAGES: SeoPage[] = [
         {
           title: 'How it works',
           paragraphs: [
-            'Open pliki.vxh.pl on two devices on the same WiFi. Set a nickname (optional), pick a receiver, and send one or many files at once. You can also drag files onto a device card or drop them on the page (desktop and PWA).',
+            'Open pliki.vxh.pl on two devices on the same LAN (WiFi, Ethernet, or hotspot). Set a nickname (optional), pick a receiver, and send one or many files at once. You can also drag files onto a device card or drop them on the page (desktop and PWA).',
             'Data goes device-to-device via WebRTC. The server only helps devices find each other; it does not store your files.',
           ],
         },
@@ -287,7 +294,7 @@ export const SEO_PAGES: SeoPage[] = [
     },
     description: {
       pl: 'Rodzina w domu: telefony, tablety, PC, jedna strona, ta sama WiFi, szybkie wysyłanie.',
-      en: 'Family at home: phones, tablets, PCs, one page, same WiFi, quick sharing.',
+      en: 'Family at home: phones, tablets, PCs, one page, same LAN, quick sharing.',
     },
     keywords: { pl: ['dom', 'wifi', 'rodzina'], en: ['home', 'wifi', 'family'] },
     h1: { pl: 'Pliki w domowej sieci', en: 'Files on your home network' },
@@ -326,8 +333,8 @@ export const SEO_PAGES: SeoPage[] = [
       en: 'How does P2P file sending work? | pliki.vxh.pl',
     },
     description: {
-      pl: 'Krok po kroku: ta sama WiFi, lista urządzeń, WebRTC, odebrane pliki. Bez magii chmury.',
-      en: 'Step by step: same WiFi, device list, WebRTC, received files. No cloud magic.',
+      pl: 'Krok po kroku: ta sama sieć LAN, lista urządzeń, WebRTC, odebrane pliki. Bez magii chmury.',
+      en: 'Step by step: same LAN, device list, WebRTC, received files. No cloud magic.',
     },
     keywords: { pl: ['jak działa', 'webrtc', 'instrukcja'], en: ['how it works', 'webrtc', 'guide'] },
     h1: { pl: 'Jak to działa?', en: 'How it works' },
@@ -336,7 +343,7 @@ export const SEO_PAGES: SeoPage[] = [
         {
           title: 'Kroki',
           paragraphs: [
-            '1. Otwórz stronę na dwóch urządzeniach w tej samej WiFi (HTTPS lub localhost).',
+            '1. Otwórz stronę na dwóch urządzeniach w tej samej sieci LAN (WiFi, Ethernet albo hotspot). Użyj HTTPS lub localhost.',
             '2. Ustaw nick albo zostaw losowy. Zobacz drugie urządzenie na liście.',
             '3. Wyślij: zielony przycisk (wiele plików naraz), przeciągnij na kartę urządzenia lub upuść na stronie.',
             '4. Na odbiorcy pliki trafiają do „Odebrane pliki”. Możesz je podejrzeć, zapisać na dysk lub usunąć z listy.',
@@ -360,7 +367,7 @@ export const SEO_PAGES: SeoPage[] = [
         {
           title: 'Steps',
           paragraphs: [
-            '1. Open the page on two devices on the same WiFi (HTTPS or localhost).',
+            '1. Open the page on two devices on the same LAN (WiFi, Ethernet, or hotspot). Use HTTPS or localhost.',
             '2. Set a nickname or keep the random one. See the other device in the list.',
             '3. Send via the green button (multiple files), drag onto a device card, or drop on the page.',
             '4. On the receiver, files appear under “Received files”. Preview, save to disk, or remove from the list.',
@@ -393,7 +400,7 @@ export const SEO_PAGES: SeoPage[] = [
     },
     description: {
       pl: 'Odpowiedzi: ta sama WiFi, iPhone Safari, duże pliki, bezpieczeństwo, brak konta.',
-      en: 'Answers: same WiFi, iPhone Safari, large files, security, no account.',
+      en: 'Answers: same LAN, iPhone Safari, large files, security, no account.',
     },
     keywords: { pl: ['faq', 'pytania'], en: ['faq', 'questions'] },
     h1: { pl: 'Najczęstsze pytania', en: 'Frequently asked questions' },
@@ -440,7 +447,7 @@ export const SEO_PAGES: SeoPage[] = [
         {
           title: 'Why is the other device missing?',
           paragraphs: [
-            'Check the same WiFi (guest networks are often isolated). Make sure the service connection is online (green status).',
+            'Check the same LAN (guest WiFi networks are often isolated). Make sure the service connection is online (green status).',
           ],
         },
         {
@@ -688,7 +695,7 @@ export const SEO_PAGES: SeoPage[] = [
         {
           title: 'Wymagania',
           paragraphs: [
-            'Ta sama sieć WiFi, ustawiony nick i aktywne połączenie z serwisem. Urządzenie zajęte wysyłką lub odbiorem nie przyjmie kolejnego pliku od razu.',
+            'Ta sama sieć LAN, ustawiony nick i aktywne połączenie z serwisem. Urządzenie zajęte wysyłką lub odbiorem nie przyjmie kolejnego pliku od razu.',
           ],
         },
       ],
@@ -758,6 +765,101 @@ export const SEO_PAGES: SeoPage[] = [
       ],
     },
   },
+  {
+    id: 'camera-share',
+    icon: 'camera',
+    plSlug: 'udostepnianie-kamery-lan',
+    enSlug: 'camera-share-lan',
+    title: {
+      pl: 'Udostępnianie kamery w LAN i OBS | pliki.vxh.pl',
+      en: 'LAN camera share and OBS | pliki.vxh.pl',
+    },
+    description: {
+      pl: 'Zakładka Camera: podgląd kamery na żywo w tej samej sieci LAN, bez chmury. Link do OBS Browser Source, PIN i widoczność w całej sieci.',
+      en: 'Camera tab: live camera preview on the same LAN, no cloud. OBS Browser Source link, PIN, and visibility for everyone on the network.',
+    },
+    keywords: {
+      pl: ['kamera lan', 'obs browser source', 'webrtc wideo', 'camera share', 'transmisja kamery'],
+      en: ['camera lan', 'obs browser source', 'webrtc video', 'camera share', 'live camera'],
+    },
+    h1: {
+      pl: 'Zakładka Camera: kamera w sieci lokalnej',
+      en: 'Camera tab: live camera on your LAN',
+    },
+    cta: {
+      href: '/camera',
+      label: {
+        pl: 'Otwórz zakładkę Camera',
+        en: 'Open the Camera tab',
+      },
+      hint: {
+        pl: 'Ta sama sieć WiFi/LAN. Kamera wymaga HTTPS lub localhost. Mikrofon opcjonalny.',
+        en: 'Same WiFi/LAN. Camera requires HTTPS or localhost. Microphone optional.',
+      },
+    },
+    sections: {
+      pl: [
+        {
+          title: 'Pliki i Camera: dwie zakładki',
+          paragraphs: [
+            'Główna strona pliki.vxh.pl służy do wysyłania plików między urządzeniami w LAN. Zakładka Camera (u góry: Pliki | Camera) to osobna funkcja: podgląd kamery na żywo przez WebRTC, bez uploadu do chmury.',
+            'Lista urządzeń w zakładce Camera jest oddzielona od listy w Pliki. Widzisz tylko urządzenia, które też otworzyły Camera w tej samej sieci LAN.',
+          ],
+        },
+        {
+          title: 'Jak udostępnić obraz',
+          paragraphs: [
+            'Na urządzeniu z kamerą (telefon, laptop) wejdź na /camera, zezwól na dostęp do kamery i wybierz odbiorcę z listy. Kliknij „Udostępnij" przy urządzeniu, na którym chcesz oglądać strumień. Mikrofon możesz włączyć przed startem lub w trakcie.',
+            'Odbiorca widzi obraz z Twojej kamery. Przycisk „Odbij obraz" zmienia orientację u nadawcy i u odbiorcy jednocześnie. Po rozłączeniu strumienia interfejs wraca do stanu początkowego.',
+          ],
+        },
+        {
+          title: 'OBS Browser Source',
+          paragraphs: [
+            'W sekcji „Link OBS" wygeneruj URL i PIN. Wklej adres w OBS jako Browser Source (np. 1920×1080 lub rozmiar Auto dopasowany do kamery). OBS pojawi się na liście jako urządzenie OBS #1, widoczne dla każdego w tej samej sieci LAN, nawet jeśli to nie on wygenerował link.',
+            'Link i PIN dla danej sieci nie wygasają: możesz zostawić ten sam URL w OBS na stałe. Przy udostępnianiu do OBS podaj PIN z ekranu lub skopiuj go prawym przyciskiem na stronie odbioru OBS.',
+          ],
+        },
+        {
+          title: 'Wymagania i jakość',
+          paragraphs: [
+            'Urządzenia muszą być w tej samej sieci WiFi/LAN (także Ethernet albo hotspot). Kamera wymaga HTTPS lub localhost. Jakość wideo jest ustawiana pod transfer lokalny (m.in. 1080p, wysoki bitrate WebRTC).',
+            'To nie jest nagrywanie w chmurze ani publiczny stream: wideo idzie bezpośrednio między urządzeniami, serwer pomaga tylko przy połączeniu i liście peerów.',
+          ],
+        },
+      ],
+      en: [
+        {
+          title: 'Files and Camera: two tabs',
+          paragraphs: [
+            'The main pliki.vxh.pl page is for sending files between devices on your LAN. The Camera tab (top bar: Pliki | Camera) is a separate feature: live camera preview over WebRTC with no cloud upload.',
+            'The device list in Camera is separate from Files. You only see peers that also opened Camera on the same LAN.',
+          ],
+        },
+        {
+          title: 'How to share video',
+          paragraphs: [
+            'On the device with a camera (phone, laptop), open /camera, allow camera access, and pick a receiver from the list. Tap “Share” on the device where you want to watch. You can enable the microphone before starting or during the stream.',
+            'The receiver sees your camera feed. “Flip image” updates orientation for both sender and viewer. When the stream ends, the UI resets to the idle state.',
+          ],
+        },
+        {
+          title: 'OBS Browser Source',
+          paragraphs: [
+            'Under “OBS link”, generate a URL and PIN. Paste the URL in OBS as a Browser Source (e.g. 1920×1080 or Auto size matched to the camera). OBS shows up as OBS #1 on the device list, visible to everyone on the same LAN, even if they did not generate the link.',
+            'The link and PIN for your network do not expire: you can keep the same URL in OBS permanently. When sharing to OBS, enter the PIN from the screen or copy it via right-click on the OBS receiver page.',
+          ],
+        },
+        {
+          title: 'Requirements and quality',
+          paragraphs: [
+            'Devices must be on the same WiFi/LAN (also Ethernet or hotspot). Camera access requires HTTPS or localhost. Video quality is tuned for local transfer (including 1080p and a high WebRTC bitrate).',
+            'This is not cloud recording or a public stream: video goes directly between devices; the server only helps with signaling and the peer list.',
+          ],
+        },
+      ],
+    },
+  },
 ];
 
 export function getSlug(page: SeoPage, lang: SeoLang) {
@@ -784,10 +886,10 @@ export function getHubLabels(lang: SeoLang) {
     ? {
         title: 'Wyślij plik w WiFi bez aplikacji, poradniki | pliki.vxh.pl',
         description:
-          'Przesyłaj pliki w LAN między telefonem a komputerem: wiele plików, przeciągnij i upuść, paczki, podgląd ZIP/audio/wideo, PWA. Poradniki krok po kroku.',
+          'Przesyłaj pliki w LAN między telefonem a komputerem: wiele plików, przeciągnij i upuść, paczki, podgląd i PWA. Zakładka Camera: kamera na żywo i OBS. Poradniki krok po kroku.',
         h1: 'Poradniki: wysyłanie plików w sieci lokalnej',
         intro:
-          'pliki.vxh.pl działa w przeglądarce w tej samej WiFi: wysyłka wielu plików, drag and drop na PC, paczki, podgląd i PWA. Wybierz temat poniżej lub uruchom aplikację.',
+          'pliki.vxh.pl działa w przeglądarce w tej samej sieci LAN: wysyłka wielu plików, drag and drop na PC, paczki, podgląd, PWA oraz zakładka Camera (kamera w LAN i link do OBS). Wybierz temat poniżej lub uruchom aplikację.',
         openApp: 'Otwórz aplikację',
         allTopics: 'Wszystkie tematy',
         langSwitch: 'English version',
@@ -795,10 +897,10 @@ export function getHubLabels(lang: SeoLang) {
     : {
         title: 'Send files on WiFi without an app, guides | pliki.vxh.pl',
         description:
-          'LAN file transfer between phone and PC: multi-file send, drag and drop, bundles, ZIP/audio/video preview, PWA. Step-by-step guides.',
+          'LAN file transfer between phone and PC: multi-file send, drag and drop, bundles, previews, and PWA. Camera tab: live LAN video and OBS. Step-by-step guides.',
         h1: 'Guides: local network file transfer',
         intro:
-          'pliki.vxh.pl runs in the browser on the same WiFi: multi-file send, desktop drag and drop, bundles, previews, and PWA. Pick a topic below or open the app.',
+          'pliki.vxh.pl runs in the browser on the same LAN: multi-file send, desktop drag and drop, bundles, previews, PWA, and the Camera tab (LAN video and OBS link). Pick a topic below or open the app.',
         openApp: 'Open the app',
         allTopics: 'All topics',
         langSwitch: 'Wersja polska',
@@ -835,6 +937,11 @@ export function getHubFeatures(lang: SeoLang) {
             title: 'PWA',
             text: 'Dodaj do ekranu: więcej miejsca na duże pliki (Safari, Chrome).',
           },
+          {
+            icon: 'camera' as const,
+            title: 'Zakładka Camera',
+            text: 'Kamera na żywo w LAN, opcjonalny mikrofon i link do OBS Browser Source.',
+          },
         ],
       }
     : {
@@ -864,6 +971,11 @@ export function getHubFeatures(lang: SeoLang) {
             icon: 'pwa' as const,
             title: 'PWA',
             text: 'Add to Home Screen for more storage (Safari, Chrome).',
+          },
+          {
+            icon: 'camera' as const,
+            title: 'Camera tab',
+            text: 'Live LAN camera, optional mic, and OBS Browser Source link.',
           },
         ],
       };

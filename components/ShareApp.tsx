@@ -2531,6 +2531,7 @@ export default function ShareApp() {
       socket.emit('register_device', {
         device: detectDeviceKind(),
         standalone: isStandalonePwa(),
+        app: 'files',
       });
       const stored = localStorage.getItem('myWebRTCName');
       if (stored?.trim()) {

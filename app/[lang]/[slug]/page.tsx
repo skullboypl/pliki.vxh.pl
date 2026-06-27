@@ -78,11 +78,13 @@ export default async function SeoArticlePage({ params }: Props) {
           </section>
         ))}
         <div className="seo-cta-block">
-          <Link href="/" className="seo-cta">
-            {lang === 'pl' ? 'Otwórz aplikację i wyślij plik' : 'Open the app and send a file'}
+          <Link href={page.cta?.href ?? '/'} className="seo-cta">
+            {page.cta?.label[lang] ??
+              (lang === 'pl' ? 'Otwórz aplikację i wyślij plik' : 'Open the app and send a file')}
           </Link>
           <span className="seo-cta-hint">
-            {lang === 'pl' ? 'Działa w przeglądarce, bez instalacji.' : 'Works in the browser, no install.'}
+            {page.cta?.hint?.[lang] ??
+              (lang === 'pl' ? 'Działa w przeglądarce, bez instalacji.' : 'Works in the browser, no install.')}
           </span>
         </div>
         <nav className="seo-related" aria-label={lang === 'pl' ? 'Powiązane tematy' : 'Related topics'}>

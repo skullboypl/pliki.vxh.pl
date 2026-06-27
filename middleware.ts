@@ -8,7 +8,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const response = NextResponse.next();
+  const response = NextResponse.next(
+    pathname.startsWith('/camera/obs/')
+      ? { request: { headers: (() => { const h = new Headers(request.headers); h.set('x-obs-bare', '1'); return h; })() } }
+      : undefined,
+  );
   response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
   response.headers.set('Pragma', 'no-cache');
   response.headers.set('Expires', '0');

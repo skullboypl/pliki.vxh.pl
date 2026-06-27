@@ -1,0 +1,77 @@
+.dev-tabs-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 12px 12px 0;
+  max-width: min(100%, 640px);
+  margin: 0 auto;
+}
+
+.dev-tabs {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 999px;
+  background: #0f0f0f;
+  border: 1px solid #232323;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.dev-tabs__seg {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 96px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  color: #888;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition:
+    color 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.dev-tabs__seg svg {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.dev-tabs__seg:hover {
+  color: #d8d8d8;
+}
+
+.dev-tabs__seg--active {
+  color: #6cbe45;
+  background: #142010;
+  border-color: #2a4020;
+}
+
+.dev-tabs__seg--active svg {
+  opacity: 1;
+}
+
+.dev-tabs__seg:focus-visible {
+  outline: 2px solid #6cbe45;
+  outline-offset: 2px;
+}
+
+body.has-dev-banner .dev-tabs-wrap {
+  padding-top: 8px;
+}
+
+body.is-pwa .dev-tabs-wrap {
+  padding-top: 4px;
+}
+
+@media (max-width: 360px) {
+  .dev-tabs__seg {
+    min-width: 0;
+    padding: 7px 14px;
+    font-size: 0.76rem;
+  }
+}
