@@ -53,6 +53,8 @@ const handle = app.getRequestHandler();
  * @type {Map<string, { publicIp: string, name: string, device: string, standalone: boolean, app: string, obsPin: string | null, registered: boolean }>}
  */
 const clients = new Map();
+/** hostSocketId -> { name, guests: Set<socketId>, publicIp } */
+const notesSessions = new Map();
 
 /** verifiedObs: `${fromSocketId}:${toSocketId}` -> timestamp (ulotny grant na czas połączenia) */
 const verifiedObs = new Map();
@@ -65,8 +67,8 @@ const normalizeDevice = (value) => {
   return DEVICE_KINDS.has(value) ? value : 'desktop';
 };
 
-/** Tab/feature room — peers only see others in the same app surface ('files' | 'camera'). */
-const APP_SURFACES = new Set(['files', 'camera']);
+/** Tab/feature room — peers only see others in the same app surface ('files' | 'camera' | 'notes'). */
+const APP_SURFACES = new Set(['files', 'camera', 'notes']);
 
 const normalizeApp = (value) => (APP_SURFACES.has(value) ? value : 'files');
 
@@ -129,6 +131,69 @@ const broadcastPeers = (io) => {
   }
 };
 
+/** Aktywne sesje Notes hostowane w LAN (ta sama publicIp, app notes). */
+const broadcastNotesHosts = (io) => {
+  const groups = new Map();
+  for (const [id, data] of clients.entries()) {
+    if (!data.registered || normalizeApp(data.app) !== 'notes' || !data.notesHosting || !data.notesHostName) continue;
+    const key = groupKey(data.publicIp);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push({
+      id,
+      sessionName: data.notesHostName,
+      hostName: data.name,
+      shortId: shortId(id),
+    });
+  }
+  for (const [id, data] of clients.entries()) {
+    if (!data.registered || normalizeApp(data.app) !== 'notes') continue;
+    const key = groupKey(data.publicIp);
+    const list = groups.get(key)?.filter((h) => h.id !== id) || [];
+    io.to(id).emit('notes_hosts_update', list);
+  }
+};
+
+const promoteNotesHost = (io, newHostId, sessionName, guestIds, publicIp) => {
+  const newHost = clients.get(newHostId);
+  if (!newHost) return false;
+  newHost.notesHosting = true;
+  newHost.notesHostName = sessionName;
+  newHost.notesSessionHostId = null;
+  const guests = new Set(guestIds.filter((id) => id !== newHostId && clients.has(id)));
+  notesSessions.set(newHostId, { name: sessionName, guests, publicIp });
+  for (const gid of guests) {
+    const ge = clients.get(gid);
+    if (ge) ge.notesSessionHostId = newHostId;
+  }
+  io.to(newHostId).emit('notes_promoted_host', { sessionName, guestIds: [...guests] });
+  for (const gid of guests) {
+    io.to(gid).emit('notes_host_changed', { newHostId, sessionName });
+  }
+  broadcastNotesHosts(io);
+  log.event('notes.promote_host', { id: shortId(newHostId), name: sessionName, guests: guests.size });
+  return true;
+};
+
+const handleNotesHostDisconnect = (io, hostSocketId) => {
+  const session = notesSessions.get(hostSocketId);
+  const hostEntry = clients.get(hostSocketId);
+  if (hostEntry) {
+    hostEntry.notesHosting = false;
+    hostEntry.notesHostName = null;
+  }
+  notesSessions.delete(hostSocketId);
+  if (!session) {
+    broadcastNotesHosts(io);
+    return;
+  }
+  const aliveGuests = [...session.guests].filter((id) => clients.has(id)).sort();
+  if (aliveGuests.length === 0) {
+    broadcastNotesHosts(io);
+    return;
+  }
+  promoteNotesHost(io, aliveGuests[0], session.name, aliveGuests.slice(1), session.publicIp);
+};
+
 const countClientsFromIp = (publicIp) => {
   let n = 0;
   for (const [, data] of clients.entries()) {
@@ -170,6 +235,9 @@ const attachSignaling = (httpServer) => {
       app: 'files',
       obsPin: null,
       registered: false,
+      notesHosting: false,
+      notesHostName: null,
+      notesSessionHostId: null,
     });
     socket.emit('assigned_name', { name, shortId: shortId(socket.id) });
     broadcastPeers(io);
@@ -196,6 +264,7 @@ const attachSignaling = (httpServer) => {
       }
       entry.registered = true;
       broadcastPeers(io);
+      if (normalizeApp(entry.app) === 'notes') broadcastNotesHosts(io);
       log.event('socket.register_device', {
         id: shortId(socket.id),
         device: entry.device,
@@ -248,6 +317,65 @@ const attachSignaling = (httpServer) => {
       if (typeof ack === 'function') ack({ ok });
     });
 
+    socket.on('notes_host', (payload, ack) => {
+      if (!socketRateLimit.allowMisc(socket.id)) return;
+      const entry = clients.get(socket.id);
+      if (!entry || normalizeApp(entry.app) !== 'notes') {
+        if (typeof ack === 'function') ack({ ok: false, error: 'not_notes' });
+        return;
+      }
+      const name = String(payload?.name || '').trim().slice(0, 64);
+      if (!name) {
+        if (typeof ack === 'function') ack({ ok: false, error: 'name_required' });
+        return;
+      }
+      entry.notesHosting = true;
+      entry.notesHostName = name;
+      entry.notesSessionHostId = null;
+      notesSessions.set(socket.id, { name, guests: new Set(), publicIp: entry.publicIp });
+      broadcastNotesHosts(io);
+      log.event('notes.host', { id: shortId(socket.id), name });
+      if (typeof ack === 'function') ack({ ok: true });
+    });
+
+    socket.on('notes_stop_host', () => {
+      if (!socketRateLimit.allowMisc(socket.id)) return;
+      const entry = clients.get(socket.id);
+      if (!entry) return;
+      entry.notesHosting = false;
+      entry.notesHostName = null;
+      notesSessions.delete(socket.id);
+      broadcastNotesHosts(io);
+      log.event('notes.stop_host', { id: shortId(socket.id) });
+    });
+
+    socket.on('notes_session_register', (payload) => {
+      if (!socketRateLimit.allowMisc(socket.id)) return;
+      const hostId = String(payload?.hostId || '');
+      const session = notesSessions.get(hostId);
+      const entry = clients.get(socket.id);
+      if (!session || !entry) return;
+      session.guests.add(socket.id);
+      entry.notesSessionHostId = hostId;
+    });
+
+    socket.on('notes_handoff', (payload) => {
+      if (!socketRateLimit.allowMisc(socket.id)) return;
+      const successorId = String(payload?.successorId || '');
+      const sessionName = String(payload?.sessionName || '').trim().slice(0, 64);
+      const session = notesSessions.get(socket.id);
+      if (!session || !sessionName || !clients.has(successorId)) return;
+      const guestIds = [...session.guests].filter((id) => id !== successorId && clients.has(id));
+      notesSessions.delete(socket.id);
+      const hostEntry = clients.get(socket.id);
+      if (hostEntry) {
+        hostEntry.notesHosting = false;
+        hostEntry.notesHostName = null;
+      }
+      promoteNotesHost(io, successorId, sessionName, guestIds, session.publicIp);
+      log.event('notes.handoff', { from: shortId(socket.id), to: shortId(successorId), name: sessionName });
+    });
+
     socket.on('signal', ({ to, signal }) => {
       if (!socketRateLimit.allowSignal(socket.id, publicIp)) {
         log.warn('signal dropped', { reason: 'rate_limited', from: shortId(socket.id), ip: publicIp });
@@ -296,9 +424,17 @@ const attachSignaling = (httpServer) => {
       for (const key of verifiedObs.keys()) {
         if (key.startsWith(`${socket.id}:`) || key.endsWith(`:${socket.id}`)) verifiedObs.delete(key);
       }
+      const entry = clients.get(socket.id);
+      if (entry?.notesHosting) {
+        handleNotesHostDisconnect(io, socket.id);
+      } else if (entry?.notesSessionHostId) {
+        const session = notesSessions.get(entry.notesSessionHostId);
+        if (session) session.guests.delete(socket.id);
+      }
       clients.delete(socket.id);
       io.emit('peer_disconnected', socket.id);
       broadcastPeers(io);
+      broadcastNotesHosts(io);
       log.event('socket.disconnect', {
         id: shortId(socket.id),
         ip: publicIp,

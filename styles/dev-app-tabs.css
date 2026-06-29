@@ -2,7 +2,7 @@
   display: flex;
   justify-content: center;
   padding: 12px 12px 0;
-  max-width: min(100%, 640px);
+  max-width: min(100%, 720px);
   margin: 0 auto;
 }
 
@@ -34,6 +34,12 @@
     color 0.18s ease,
     background-color 0.18s ease,
     border-color 0.18s ease;
+}
+
+.dev-tabs--multi .dev-tabs__seg {
+  min-width: 78px;
+  padding: 7px 11px;
+  font-size: 0.76rem;
 }
 
 .dev-tabs__seg svg {

@@ -56,6 +56,57 @@
   margin-bottom: 16px;
 }
 
+.camera-share__camera-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #2a2a2a;
+  background: #101010;
+}
+
+.camera-share__camera-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 180px;
+  min-width: 0;
+  font-size: 0.72rem;
+  color: #888;
+  font-weight: 600;
+}
+
+.camera-share__camera-select {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #333;
+  background: #0a0a0a;
+  color: #e8e8e8;
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+.camera-share__camera-select:focus {
+  outline: none;
+  border-color: #4a7a3a;
+}
+
+.camera-share__camera-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.camera-share__camera-quick .camera-share__btn {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+}
+
 .camera-share__controls .camera-share__btn {
   flex: 1;
 }

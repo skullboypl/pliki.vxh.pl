@@ -6,7 +6,7 @@ import DevAppTabs from '@/components/DevAppTabs';
 import DevBanner from '@/components/DevBanner';
 import LegacyPwaCleanup from '@/components/LegacyPwaCleanup';
 import PwaUpdateManager from '@/components/PwaUpdateManager';
-import { isCameraShareEnabled, isDevBannerEnabled } from '@/lib/devSite';
+import { isCameraShareEnabled, isDevBannerEnabled, isNotesShareEnabled } from '@/lib/devSite';
 import { appBootScript } from '@/lib/appBootScript';
 import { buildHomeMetadata } from '@/lib/seo/appMeta';
 import './globals.css';
@@ -32,6 +32,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const appFingerprint = process.env.APP_FINGERPRINT ?? 'unknown@0';
   const devBanner = isDevBannerEnabled();
   const cameraShare = isCameraShareEnabled();
+  const notesShare = isNotesShareEnabled();
   const hdrs = await headers();
   const obsBare = hdrs.get('x-obs-bare') === '1';
 
@@ -68,7 +69,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         }
       >
         {!obsBare && devBanner ? <DevBanner /> : null}
-        {!obsBare ? <DevAppTabs enabled={cameraShare} /> : null}
+        {!obsBare ? <DevAppTabs camera={cameraShare} notes={notesShare} /> : null}
         {!obsBare ? <LegacyPwaCleanup /> : null}
         {!obsBare ? <AppUpdateCheck /> : null}
         {!obsBare ? <PwaUpdateManager /> : null}

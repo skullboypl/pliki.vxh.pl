@@ -5,10 +5,11 @@ import { usePathname } from 'next/navigation';
 import '@/styles/dev-app-tabs.css';
 
 type Props = {
-  enabled: boolean;
+  camera: boolean;
+  notes: boolean;
 };
 
-const TAB_PATHS = new Set(['/', '/camera']);
+const TAB_PATHS = new Set(['/', '/camera', '/notes']);
 
 function IconFiles() {
   return (
@@ -37,17 +38,32 @@ function IconCamera() {
   );
 }
 
-export default function DevAppTabs({ enabled }: Props) {
+function IconNotes() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M6 4h9l5 5v11a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path d="M14 4v5h5M8 13h8M8 17h5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export default function DevAppTabs({ camera, notes }: Props) {
   const pathname = usePathname() || '/';
 
-  if (!enabled || !TAB_PATHS.has(pathname)) return null;
+  if ((!camera && !notes) || !TAB_PATHS.has(pathname)) return null;
 
   const filesActive = pathname === '/';
   const cameraActive = pathname === '/camera';
+  const notesActive = pathname === '/notes';
 
   return (
     <div className="dev-tabs-wrap">
-      <nav className="dev-tabs" role="tablist" aria-label="Pliki / Camera">
+      <nav className="dev-tabs dev-tabs--multi" role="tablist" aria-label="Pliki / Camera / Notes">
         <Link
           href="/"
           role="tab"
@@ -58,16 +74,30 @@ export default function DevAppTabs({ enabled }: Props) {
           <IconFiles />
           <span>Pliki</span>
         </Link>
-        <Link
-          href="/camera"
-          role="tab"
-          aria-selected={cameraActive}
-          aria-current={cameraActive ? 'page' : undefined}
-          className={`dev-tabs__seg${cameraActive ? ' dev-tabs__seg--active' : ''}`}
-        >
-          <IconCamera />
-          <span>Camera</span>
-        </Link>
+        {camera ? (
+          <Link
+            href="/camera"
+            role="tab"
+            aria-selected={cameraActive}
+            aria-current={cameraActive ? 'page' : undefined}
+            className={`dev-tabs__seg${cameraActive ? ' dev-tabs__seg--active' : ''}`}
+          >
+            <IconCamera />
+            <span>Camera</span>
+          </Link>
+        ) : null}
+        {notes ? (
+          <Link
+            href="/notes"
+            role="tab"
+            aria-selected={notesActive}
+            aria-current={notesActive ? 'page' : undefined}
+            className={`dev-tabs__seg${notesActive ? ' dev-tabs__seg--active' : ''}`}
+          >
+            <IconNotes />
+            <span>Notes</span>
+          </Link>
+        ) : null}
       </nav>
     </div>
   );

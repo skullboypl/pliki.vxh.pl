@@ -5,10 +5,10 @@ export const LAN_VIDEO_FRAMERATE = 60;
 
 /** Preferuj max rozdzielczość kamery — przeglądarka wybierze najlepsze dostępne. */
 export const CAMERA_VIDEO_CONSTRAINTS: MediaTrackConstraints = {
-  facingMode: 'user',
   width: { ideal: 1920, max: 3840 },
   height: { ideal: 1080, max: 2160 },
   frameRate: { ideal: 30, max: LAN_VIDEO_FRAMERATE },
+  facingMode: { ideal: 'user' },
 };
 
 export const CAMERA_VIDEO_CONSTRAINTS_FALLBACK: MediaTrackConstraints = {

@@ -23,3 +23,13 @@ export function isCameraShareEnabled(): boolean {
   const flag = process.env.CAMERA_SHARE?.trim().toLowerCase();
   return flag === '1' || flag === 'true' || flag === 'yes';
 }
+
+/** Notes tab + /notes — wspólne notatki i rysowanie w LAN. NOTES_SHARE=true */
+export function isNotesShareEnabled(): boolean {
+  const flag = process.env.NOTES_SHARE?.trim().toLowerCase();
+  return flag === '1' || flag === 'true' || flag === 'yes';
+}
+
+export function isDevAppsTabsEnabled(): boolean {
+  return isCameraShareEnabled() || isNotesShareEnabled();
+}

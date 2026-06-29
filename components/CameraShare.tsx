@@ -7,9 +7,16 @@ import { APP_DISPLAY_VERSION } from '@/lib/appRelease';
 import { detectDeviceKind, isStandalonePwa } from '@/lib/device';
 import { displayNickname } from '@/lib/nicknames';
 import {
-  CAMERA_VIDEO_CONSTRAINTS,
-  CAMERA_VIDEO_CONSTRAINTS_FALLBACK,
+  buildVideoConstraints,
+  buildVideoConstraintsFallback,
+  displayVideoDeviceLabel,
+  findDeviceForFacing,
+  listVideoInputDevices,
+  type VideoInputDevice,
+} from '@/lib/cameraDevices';
+import {
   tuneAllVideoSenders,
+  tuneSenderForLan,
 } from '@/lib/webrtcCameraQuality';
 import { serializeObsPlayerSize, type ObsPlayerSize } from '@/lib/obsPlayerSize';
 import '@/styles/camera-share.css';
@@ -112,6 +119,10 @@ const MESSAGES = {
     pinCancel: 'Anuluj',
     badPin: 'Nieprawidłowy PIN.',
     obsBadge: 'OBS',
+    cameraLabel: 'Kamera',
+    cameraFront: 'Przednia',
+    cameraBack: 'Tylna',
+    cameraSwitch: 'Zmień kamerę',
   },
   en: {
     title: 'Camera share',
@@ -151,6 +162,10 @@ const MESSAGES = {
     pinCancel: 'Cancel',
     badPin: 'Invalid PIN.',
     obsBadge: 'OBS',
+    cameraLabel: 'Camera',
+    cameraFront: 'Front',
+    cameraBack: 'Back',
+    cameraSwitch: 'Switch camera',
   },
 } as const;
 
@@ -182,6 +197,9 @@ export default function CameraShare() {
   const [obsCopied, setObsCopied] = useState<'url' | 'pin' | null>(null);
   const [pinModal, setPinModal] = useState<{ peerId: string; label: string } | null>(null);
   const [pinInput, setPinInput] = useState('');
+  const [videoDevices, setVideoDevices] = useState<VideoInputDevice[]>([]);
+  const [selectedVideoDeviceId, setSelectedVideoDeviceId] = useState('');
+  const [switchingCamera, setSwitchingCamera] = useState(false);
 
   const socketRef = useRef<ReturnType<typeof acquireSignalingSocket> | null>(null);
   const peerConnections = useRef<Record<string, RTCPeerConnection>>({});
@@ -196,7 +214,40 @@ export default function CameraShare() {
   outgoingFlipRef.current = outgoingFlip;
   const micEnabledRef = useRef(false);
   micEnabledRef.current = micEnabled;
+  const selectedVideoDeviceIdRef = useRef('');
+  selectedVideoDeviceIdRef.current = selectedVideoDeviceId;
   const disconnectTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  useEffect(() => {
+    const stored = localStorage.getItem('cameraVideoDeviceId');
+    if (stored) {
+      setSelectedVideoDeviceId(stored);
+      selectedVideoDeviceIdRef.current = stored;
+    }
+  }, []);
+
+  const refreshVideoDevices = useCallback(async () => {
+    try {
+      const list = await listVideoInputDevices();
+      setVideoDevices(list);
+      if (list.length && !list.some((d) => d.deviceId === selectedVideoDeviceIdRef.current)) {
+        const next = list[0].deviceId;
+        setSelectedVideoDeviceId(next);
+        selectedVideoDeviceIdRef.current = next;
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshVideoDevices();
+    const md = navigator.mediaDevices;
+    if (!md?.addEventListener) return;
+    const onChange = () => void refreshVideoDevices();
+    md.addEventListener('devicechange', onChange);
+    return () => md.removeEventListener('devicechange', onChange);
+  }, [refreshVideoDevices]);
 
   useEffect(() => {
     localStorage.setItem('lang', lang);
@@ -359,6 +410,108 @@ export default function CameraShare() {
     });
   }, []);
 
+  const replaceVideoTrack = useCallback(async (newTrack: MediaStreamTrack) => {
+    let stream = localStreamRef.current;
+    if (!stream) {
+      stream = new MediaStream();
+      localStreamRef.current = stream;
+    }
+    const oldVideo = stream.getVideoTracks()[0];
+    if (oldVideo) {
+      stream.removeTrack(oldVideo);
+      oldVideo.stop();
+    }
+    stream.addTrack(newTrack);
+    setHasLocalStream(true);
+
+    const peerId = sharingPeerIdRef.current;
+    if (peerId) {
+      const pc = peerConnections.current[peerId];
+      const sender = pc?.getSenders().find((s) => s.track?.kind === 'video');
+      if (sender) {
+        await sender.replaceTrack(newTrack);
+        await tuneSenderForLan(sender);
+      }
+    }
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = stream;
+      void localVideoRef.current.play().catch(() => {});
+    }
+  }, []);
+
+  const acquireVideoOnly = useCallback(async (opts: { deviceId?: string; facingMode?: 'user' | 'environment' }) => {
+    const md = navigator.mediaDevices;
+    if (!md?.getUserMedia) throw new Error('getUserMedia unavailable');
+    try {
+      return await md.getUserMedia({ video: buildVideoConstraints(opts), audio: false });
+    } catch (inner) {
+      if (inner instanceof DOMException && inner.name === 'OverconstrainedError') {
+        try {
+          return await md.getUserMedia({ video: buildVideoConstraintsFallback(), audio: false });
+        } catch {
+          return await md.getUserMedia({ video: true, audio: false });
+        }
+      }
+      throw inner;
+    }
+  }, []);
+
+  const switchVideoDevice = useCallback(
+    async (deviceId: string) => {
+      if (!deviceId || switchingCamera) return;
+      setSwitchingCamera(true);
+      try {
+        const stream = await acquireVideoOnly({ deviceId });
+        const track = stream.getVideoTracks()[0];
+        if (!track) throw new Error('no video track');
+        await replaceVideoTrack(track);
+        setSelectedVideoDeviceId(deviceId);
+        selectedVideoDeviceIdRef.current = deviceId;
+        localStorage.setItem('cameraVideoDeviceId', deviceId);
+        void refreshVideoDevices();
+        setError(null);
+      } catch (e) {
+        clog('switchVideoDevice failed', e);
+        setError(t('cameraError'));
+      } finally {
+        setSwitchingCamera(false);
+      }
+    },
+    [acquireVideoOnly, refreshVideoDevices, replaceVideoTrack, switchingCamera, t],
+  );
+
+  const switchVideoFacing = useCallback(
+    async (facing: 'user' | 'environment') => {
+      const match = findDeviceForFacing(videoDevices, facing === 'user' ? 'front' : 'back');
+      if (match) {
+        await switchVideoDevice(match.deviceId);
+        return;
+      }
+      if (switchingCamera) return;
+      setSwitchingCamera(true);
+      try {
+        const stream = await acquireVideoOnly({ facingMode: facing });
+        const track = stream.getVideoTracks()[0];
+        if (!track) throw new Error('no video track');
+        await replaceVideoTrack(track);
+        const settings = track.getSettings();
+        if (settings.deviceId) {
+          setSelectedVideoDeviceId(settings.deviceId);
+          selectedVideoDeviceIdRef.current = settings.deviceId;
+          localStorage.setItem('cameraVideoDeviceId', settings.deviceId);
+        }
+        void refreshVideoDevices();
+        setError(null);
+      } catch (e) {
+        clog('switchVideoFacing failed', e);
+        setError(t('cameraError'));
+      } finally {
+        setSwitchingCamera(false);
+      }
+    },
+    [acquireVideoOnly, refreshVideoDevices, replaceVideoTrack, switchVideoDevice, switchingCamera, t, videoDevices],
+  );
+
   const startLocalCamera = useCallback(
     async (withMic: boolean) => {
       const md = navigator.mediaDevices;
@@ -391,18 +544,20 @@ export default function CameraShare() {
       }
 
       clog('startLocalCamera', { withMic, secureContext: window.isSecureContext });
+      const deviceId = selectedVideoDeviceIdRef.current;
+      const videoOpts = deviceId ? { deviceId } : { facingMode: 'user' as const };
       try {
         let stream: MediaStream;
         try {
           stream = await md.getUserMedia({
-            video: CAMERA_VIDEO_CONSTRAINTS,
+            video: buildVideoConstraints(videoOpts),
             audio: withMic,
           });
         } catch (inner) {
           if (inner instanceof DOMException && inner.name === 'OverconstrainedError') {
             try {
               stream = await md.getUserMedia({
-                video: CAMERA_VIDEO_CONSTRAINTS_FALLBACK,
+                video: buildVideoConstraintsFallback(),
                 audio: withMic,
               });
             } catch {
@@ -416,6 +571,14 @@ export default function CameraShare() {
         setHasLocalStream(true);
         setMicLive(withMic && stream.getAudioTracks().length > 0);
         setError(null);
+        const vt = stream.getVideoTracks()[0];
+        const settings = vt?.getSettings();
+        if (settings?.deviceId) {
+          setSelectedVideoDeviceId(settings.deviceId);
+          selectedVideoDeviceIdRef.current = settings.deviceId;
+          localStorage.setItem('cameraVideoDeviceId', settings.deviceId);
+        }
+        void refreshVideoDevices();
         clog('startLocalCamera OK', stream.getTracks().map((tr) => tr.kind));
         return stream;
       } catch (e) {
@@ -433,7 +596,7 @@ export default function CameraShare() {
         throw e;
       }
     },
-    [t],
+    [refreshVideoDevices, t],
   );
 
   const shareToPeer = useCallback(
@@ -704,6 +867,58 @@ export default function CameraShare() {
           muted
         />
       </div>
+
+      {!watchingPeerId ? (
+        <div className="camera-share__camera-pick">
+          <label className="camera-share__camera-label">
+            <span>{t('cameraLabel')}</span>
+            <select
+              className="camera-share__camera-select"
+              value={selectedVideoDeviceId}
+              disabled={switchingCamera}
+              onChange={(e) => {
+                const id = e.target.value;
+                if (!id) return;
+                setSelectedVideoDeviceId(id);
+                selectedVideoDeviceIdRef.current = id;
+                localStorage.setItem('cameraVideoDeviceId', id);
+                if (sharingPeerId) void switchVideoDevice(id);
+              }}
+            >
+              {videoDevices.length === 0 ? (
+                <option value="">{lang === 'pl' ? 'Domyślna' : 'Default'}</option>
+              ) : (
+                videoDevices.map((d) => (
+                  <option key={d.deviceId} value={d.deviceId}>
+                    {displayVideoDeviceLabel(videoDevices, d.deviceId, lang)}
+                  </option>
+                ))
+              )}
+            </select>
+          </label>
+          {videoDevices.length >= 2 ||
+          (findDeviceForFacing(videoDevices, 'front') && findDeviceForFacing(videoDevices, 'back')) ? (
+            <div className="camera-share__camera-quick">
+              <button
+                type="button"
+                className="camera-share__btn"
+                disabled={switchingCamera}
+                onClick={() => void switchVideoFacing('user')}
+              >
+                {t('cameraFront')}
+              </button>
+              <button
+                type="button"
+                className="camera-share__btn"
+                disabled={switchingCamera}
+                onClick={() => void switchVideoFacing('environment')}
+              >
+                {t('cameraBack')}
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {!activePeerId ? (
         <button
