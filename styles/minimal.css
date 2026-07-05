@@ -2604,15 +2604,6 @@ button.btn-send {
   text-align: center;
 }
 
-.preview-ios-large-hint {
-  margin: 0;
-  padding: 10px 12px;
-  font-size: 0.82rem;
-  line-height: 1.45;
-  color: #9ab08f;
-  text-align: center;
-}
-
 .ios-save-modal__steps {
   margin-top: 0;
   font-size: 0.8rem;

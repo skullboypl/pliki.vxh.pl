@@ -339,8 +339,6 @@ const MESSAGES = {
     previewClosedForTransfer: 'Podgląd wideo zamknięty na czas transferu pliku.',
     previewVideoError:
       'Nie można odtworzyć pliku (uszkodzony, niepełny transfer lub format nieobsługiwany). Zapisz na dysk i otwórz w odtwarzaczu.',
-    previewIosLargeSaveHint:
-      'Duży plik: włącz pełny ekran w odtwarzaczu, potem Udostępnij → Zapisz wideo lub Zapisz w Plikach.',
     storageInsecureContext:
       'Duże pliki mogą nie działać na tym adresie. Użyj połączenia z kłódką (HTTPS).',
     storageQuotaUnavailable:
@@ -519,8 +517,6 @@ const MESSAGES = {
     previewClosedForTransfer: 'Video preview closed while a file transfer is active.',
     previewVideoError:
       'Cannot play this file (corrupt, incomplete transfer, or unsupported format). Save to disk and open in a player.',
-    previewIosLargeSaveHint:
-      'Large file: enter fullscreen in the player, then Share → Save Video or Save to Files.',
     storageInsecureContext: 'Large files may not work here. Use HTTPS (lock icon).',
     storageQuotaUnavailable:
       'Could not read a storage limit from the browser. Receives still use disk (OPFS) until full — then you will see an error on the device row.',
@@ -4062,15 +4058,9 @@ export default function ShareApp() {
               </div>
             ) : null}
             <div className="preview-actions">
-              {deviceHints.ios &&
-              isIosShareTooLarge(previewItem.size ?? previewItem.file?.size ?? 0) &&
-              isVideoDownloadLink(previewItem) ? (
-                <p className="preview-ios-large-hint">{t('previewIosLargeSaveHint')}</p>
-              ) : (
-                <button type="button" className="btn-save" onClick={() => savePreview(previewItem)}>
-                  {t('saveFile')}
-                </button>
-              )}
+              <button type="button" className="btn-save" onClick={() => savePreview(previewItem)}>
+                {t('saveFile')}
+              </button>
             </div>
           </div>
         </div>
