@@ -430,6 +430,8 @@ const MESSAGES = {
     receivedDeleteAllYes: 'Usuń',
     modalCancel: 'Anuluj',
     saveFile: 'Zapisz plik',
+    saveFileFailed:
+      'Nie udało się zapisać pliku. Zamknij i otwórz ponownie PWA, potem spróbuj jeszcze raz.',
     fromWho: 'Od: {name}',
     showDetails: 'Pokaż logi techniczne',
     hideLogs: 'Ukryj logi',
@@ -604,6 +606,8 @@ const MESSAGES = {
     receivedDeleteAllYes: 'Delete',
     modalCancel: 'Cancel',
     saveFile: 'Save file',
+    saveFileFailed:
+      'Could not save the file. Close and reopen the PWA, then try again.',
     fromWho: 'From: {name}',
     showDetails: 'Show technical logs',
     hideLogs: 'Hide logs',
@@ -826,6 +830,7 @@ export default function ShareApp() {
   const [showLogs, setShowLogs] = useState(false);
   const [connectingPeer, setConnectingPeer] = useState<string | null>(null);
   const [downloadLinks, setDownloadLinks] = useState<DownloadLink[]>([]);
+  const [saveFileError, setSaveFileError] = useState<string | null>(null);
   const [previewItem, setPreviewItem] = useState<DownloadLink | null>(null);
   const previewBlobUrlRef = useRef<string | null>(null);
   const [otherClientSurface, setOtherClientSurface] = useState<ClientSurface | null>(null);
@@ -3160,13 +3165,19 @@ export default function ShareApp() {
   };
 
   const saveFile = async (item: DownloadLink) => {
+    setSaveFileError(null);
     const result = await saveReceivedFile({
       fileName: item.fileName,
       url: item.url,
       mime: item.mime,
       file: item.file,
     });
-    if (result === 'cancelled' || result === 'failed') return;
+    if (result === 'cancelled') return;
+    if (result === 'failed') {
+      setSaveFileError(t('saveFileFailed'));
+      window.setTimeout(() => setSaveFileError(null), 8000);
+      return;
+    }
 
     markFilesSaved([item.id]);
     if (item.opfsEntryName) {
@@ -3639,6 +3650,11 @@ export default function ShareApp() {
       <section className="downloads-block" ref={downloadsRef}>
         <h2 className="section-heading">{t('receivedFiles')}</h2>
         <p className="section-desc">{t('receivedHint')}</p>
+        {saveFileError ? (
+          <p className="download-save-error" role="alert">
+            {saveFileError}
+          </p>
+        ) : null}
         {downloadLinks.length > 0 ? (
           <ReceivedFilesList
             lang={lang}

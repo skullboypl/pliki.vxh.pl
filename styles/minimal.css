@@ -2580,6 +2580,15 @@ button.btn-send {
   color: #c66;
 }
 
+.download-save-error {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  font-size: 0.82rem;
+  color: #c66;
+  background: rgba(198, 102, 102, 0.1);
+  border-radius: 8px;
+}
+
 .download-bundle-body {
   padding: 2px 8px 6px 12px;
 }
