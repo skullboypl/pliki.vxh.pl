@@ -18,7 +18,7 @@ import {
   type ClientSurface,
 } from '@/lib/clientSurface';
 import { formatDualSurfaceWarning, watchOtherClientSurface } from '@/lib/clientPresence';
-import { saveReceivedFile, prepareShareFile } from '@/lib/saveReceivedFile';
+import { saveReceivedFile, prepareShareFile, IOS_SHARE_MAX_BYTES, isIosShareTooLarge } from '@/lib/saveReceivedFile';
 import IosSaveModal from '@/components/IosSaveModal';
 import { IconFile, IconShareIos, IconSpinner, IconUpload, IconWifi } from '@/components/icons';
 import FileDropOverlay from '@/components/FileDropOverlay';
@@ -329,6 +329,8 @@ const MESSAGES = {
     previewClosedForTransfer: 'Podgląd wideo zamknięty na czas transferu pliku.',
     previewVideoError:
       'Nie można odtworzyć pliku (uszkodzony, niepełny transfer lub format nieobsługiwany). Zapisz na dysk i otwórz w odtwarzaczu.',
+    previewIosLargeSaveHint:
+      'Duży plik: włącz pełny ekran w odtwarzaczu, potem Udostępnij → Zapisz wideo lub Zapisz w Plikach.',
     storageInsecureContext:
       'Duże pliki mogą nie działać na tym adresie. Użyj połączenia z kłódką (HTTPS).',
     storageQuotaUnavailable:
@@ -507,6 +509,8 @@ const MESSAGES = {
     previewClosedForTransfer: 'Video preview closed while a file transfer is active.',
     previewVideoError:
       'Cannot play this file (corrupt, incomplete transfer, or unsupported format). Save to disk and open in a player.',
+    previewIosLargeSaveHint:
+      'Large file: enter fullscreen in the player, then Share → Save Video or Save to Files.',
     storageInsecureContext: 'Large files may not work here. Use HTTPS (lock icon).',
     storageQuotaUnavailable:
       'Could not read a storage limit from the browser. Receives still use disk (OPFS) until full — then you will see an error on the device row.',
@@ -1142,7 +1146,10 @@ export default function ShareApp() {
                 mime,
                 size: manifest?.size ?? file.size,
                 file,
-                shareFile: prepareShareFile(file, fileName, mime),
+                shareFile:
+                  file.size <= IOS_SHARE_MAX_BYTES
+                    ? prepareShareFile(file, fileName, mime)
+                    : undefined,
                 receivedAt: manifest?.receivedAt || ts || Date.now(),
                 batchId: manifest?.batchId,
                 batchIndex: manifest?.batchIndex,
@@ -2120,7 +2127,10 @@ export default function ShareApp() {
       mime,
       size: meta.size,
       file: fileObj,
-      shareFile: fileObj ? prepareShareFile(fileObj, fileName, mime) : undefined,
+      shareFile:
+        fileObj && fileObj.size <= IOS_SHARE_MAX_BYTES
+          ? prepareShareFile(fileObj, fileName, mime)
+          : undefined,
       isNew: true,
       receivedAt: Date.now(),
       batchId: meta.batchId,
@@ -3903,11 +3913,13 @@ export default function ShareApp() {
             fileName: iosSaveItem.fileName,
             url: iosSaveItem.url,
             mime: iosSaveItem.mime,
+            size: iosSaveItem.size ?? iosSaveItem.file?.size,
             file: iosSaveItem.file,
             shareFile: iosSaveItem.shareFile,
           }}
           onClose={closeIosSaveModal}
           onSaved={() => completeFileSaved(iosSaveItem)}
+          onPreview={() => openPreview(iosSaveItem)}
         />
       ) : null}
 
@@ -3994,9 +4006,15 @@ export default function ShareApp() {
               </div>
             ) : null}
             <div className="preview-actions">
-              <button type="button" className="btn-save" onClick={() => savePreview(previewItem)}>
-                {t('saveFile')}
-              </button>
+              {deviceHints.ios &&
+              isIosShareTooLarge(previewItem.size ?? previewItem.file?.size ?? 0) &&
+              isVideoDownloadLink(previewItem) ? (
+                <p className="preview-ios-large-hint">{t('previewIosLargeSaveHint')}</p>
+              ) : (
+                <button type="button" className="btn-save" onClick={() => savePreview(previewItem)}>
+                  {t('saveFile')}
+                </button>
+              )}
             </div>
           </div>
         </div>
