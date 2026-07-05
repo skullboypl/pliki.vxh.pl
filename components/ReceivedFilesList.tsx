@@ -14,6 +14,8 @@ export type ReceivedFile = {
   mime: string;
   size?: number;
   file?: File;
+  /** iOS: pre-sliced File ready for Web Share (prepared at receive). */
+  shareFile?: File;
   isNew?: boolean;
   batchId?: string;
   batchIndex?: number;

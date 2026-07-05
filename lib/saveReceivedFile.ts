@@ -3,6 +3,7 @@ export type SaveableFile = {
   url: string;
   mime: string;
   file?: File;
+  shareFile?: File;
 };
 
 export type SaveReceivedFileResult = 'saved' | 'cancelled' | 'failed';
@@ -46,14 +47,44 @@ export function isIosDevice(): boolean {
   return /iphone|ipad|ipod/.test(ua) && !win?.MSStream;
 }
 
+/** Prepare a shareable File copy while the blob is still in memory (sync, no extra RAM). */
+export function prepareShareFile(file: File, fileName: string, mime: string): File {
+  const name = fileName || file.name || 'file';
+  const candidates = [
+    iosShareMime(name, file.type || mime),
+    file.type || mime,
+    'video/quicktime',
+    'video/mp4',
+  ].filter((value, index, list) => value && list.indexOf(value) === index) as string[];
+
+  for (const shareMime of candidates) {
+    const blob = file.slice(0, file.size, shareMime);
+    const shareFile = new File([blob], name, {
+      type: shareMime,
+      lastModified: file.lastModified ?? Date.now(),
+    });
+    if (
+      typeof navigator === 'undefined' ||
+      !navigator.canShare ||
+      navigator.canShare({ files: [shareFile] })
+    ) {
+      return shareFile;
+    }
+  }
+
+  const fallbackMime = iosShareMime(name, file.type || mime);
+  const blob = file.slice(0, file.size, fallbackMime);
+  return new File([blob], name, {
+    type: fallbackMime,
+    lastModified: file.lastModified ?? Date.now(),
+  });
+}
+
 function buildShareFile(item: SaveableFile, mime: string): File | null {
+  if (item.shareFile && item.shareFile.type === mime) return item.shareFile;
   const source = item.file;
   if (!source) return null;
-  const name = item.fileName || source.name || 'file';
-  return new File([source], name, {
-    type: mime,
-    lastModified: source.lastModified ?? Date.now(),
-  });
+  return prepareShareFile(source, item.fileName || source.name || 'file', mime);
 }
 
 function triggerAnchorDownload(item: SaveableFile): boolean {
@@ -74,26 +105,44 @@ function isAbortError(err: unknown): boolean {
   return !!err && typeof err === 'object' && 'name' in err && (err as { name?: string }).name === 'AbortError';
 }
 
+function shareMimeCandidates(item: SaveableFile): string[] {
+  const declared = item.file?.type || item.mime;
+  const ext = fileExtension(item.fileName);
+  const out: string[] = [];
+  const push = (mime?: string) => {
+    if (!mime || out.includes(mime)) return;
+    out.push(mime);
+  };
+  push(iosShareMime(item.fileName, declared));
+  if (ext === '.mov') {
+    push('video/quicktime');
+    push('video/mp4');
+  }
+  push(declared);
+  return out;
+}
+
 /**
- * iOS PWA: only the system share sheet can save files (Zapisz w Plikach).
- * Never open blob URLs in a new tab, that breaks standalone PWA and reloads the app.
+ * Direct share call from a user tap (e.g. modal button). iOS requires { files } only.
  */
-async function saveOnIos(item: SaveableFile): Promise<SaveReceivedFileResult> {
+export async function shareFileOnIos(item: SaveableFile): Promise<SaveReceivedFileResult> {
   if (typeof navigator.share !== 'function') return 'failed';
 
-  const primaryMime = iosShareMime(item.fileName, item.file?.type || item.mime);
-  const primary = buildShareFile(item, primaryMime);
-  if (!primary) return 'failed';
-
-  const candidates: File[] = [primary];
-  if (fileExtension(item.fileName) === '.mov' && primaryMime !== 'video/mp4') {
-    const alt = buildShareFile(item, 'video/mp4');
-    if (alt) candidates.push(alt);
+  if (item.shareFile) {
+    try {
+      await navigator.share({ files: [item.shareFile] });
+      return 'saved';
+    } catch (err) {
+      if (isAbortError(err)) return 'cancelled';
+    }
   }
 
-  for (const file of candidates) {
+  for (const mime of shareMimeCandidates(item)) {
+    const file = buildShareFile(item, mime);
+    if (!file) continue;
+    if (navigator.canShare && !navigator.canShare({ files: [file] })) continue;
     try {
-      await navigator.share({ files: [file], title: file.name });
+      await navigator.share({ files: [file] });
       return 'saved';
     } catch (err) {
       if (isAbortError(err)) return 'cancelled';
@@ -104,16 +153,17 @@ async function saveOnIos(item: SaveableFile): Promise<SaveReceivedFileResult> {
 }
 
 export async function saveReceivedFile(item: SaveableFile): Promise<SaveReceivedFileResult> {
-  if (isIosDevice()) return saveOnIos(item);
+  if (isIosDevice()) return shareFileOnIos(item);
   return triggerAnchorDownload(item) ? 'saved' : 'failed';
 }
 
 export async function saveBlobDownload(blob: Blob, fileName: string): Promise<SaveReceivedFileResult> {
   const mime = iosShareMime(fileName, blob.type || 'application/octet-stream');
   const file = new File([blob], fileName, { type: mime });
+  const shareFile = prepareShareFile(file, fileName, mime);
   const url = URL.createObjectURL(blob);
   try {
-    return await saveReceivedFile({ fileName, url, mime, file });
+    return await saveReceivedFile({ fileName, url, mime, file, shareFile });
   } finally {
     window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }

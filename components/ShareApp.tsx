@@ -18,7 +18,8 @@ import {
   type ClientSurface,
 } from '@/lib/clientSurface';
 import { formatDualSurfaceWarning, watchOtherClientSurface } from '@/lib/clientPresence';
-import { saveReceivedFile } from '@/lib/saveReceivedFile';
+import { saveReceivedFile, prepareShareFile } from '@/lib/saveReceivedFile';
+import IosSaveModal from '@/components/IosSaveModal';
 import { IconFile, IconShareIos, IconSpinner, IconUpload, IconWifi } from '@/components/icons';
 import FileDropOverlay from '@/components/FileDropOverlay';
 import PeerQuickSend from '@/components/PeerQuickSend';
@@ -65,10 +66,13 @@ import {
 import {
   clearBrowserSessionMarker,
   clearPageReloadingFlag,
+  clearSaveInProgress,
   isNewBrowserSession,
   isPageReloading,
+  isSaveInProgress,
   markBrowserSession,
   markPageReloading,
+  markSaveInProgress,
 } from '@/lib/receivedStorageSession';
 import { textToNoteFile } from '@/lib/textNote';
 import ShareStrip from '@/components/ShareStrip';
@@ -831,6 +835,7 @@ export default function ShareApp() {
   const [connectingPeer, setConnectingPeer] = useState<string | null>(null);
   const [downloadLinks, setDownloadLinks] = useState<DownloadLink[]>([]);
   const [saveFileError, setSaveFileError] = useState<string | null>(null);
+  const [iosSaveItem, setIosSaveItem] = useState<DownloadLink | null>(null);
   const [previewItem, setPreviewItem] = useState<DownloadLink | null>(null);
   const previewBlobUrlRef = useRef<string | null>(null);
   const [otherClientSurface, setOtherClientSurface] = useState<ClientSurface | null>(null);
@@ -1128,14 +1133,16 @@ export default function ShareApp() {
               const fileName = manifest?.fileName ?? displayNameFromOpfsEntry(entry.entryName);
               const file = entry.file;
               const ts = timestampFromOpfsEntry(entry.entryName);
+              const mime = manifest?.mime || file.type || 'application/octet-stream';
               restored.push({
                 id: Date.now() + i++,
                 fileName,
                 url: URL.createObjectURL(file),
                 peerName: manifest?.peerName || unknownSender,
-                mime: manifest?.mime || file.type || 'application/octet-stream',
+                mime,
                 size: manifest?.size ?? file.size,
                 file,
+                shareFile: prepareShareFile(file, fileName, mime),
                 receivedAt: manifest?.receivedAt || ts || Date.now(),
                 batchId: manifest?.batchId,
                 batchIndex: manifest?.batchIndex,
@@ -1185,6 +1192,7 @@ export default function ShareApp() {
     const onPageHide = (e: PageTransitionEvent) => {
       if (e.persisted) return;
       if (isPageReloading()) return;
+      if (isSaveInProgress()) return;
 
       // On mobile/PWA, pagehide can also fire for temporary OS UI (share sheet / downloads),
       // so we delay cleanup and cancel it if the page becomes visible again.
@@ -2112,6 +2120,7 @@ export default function ShareApp() {
       mime,
       size: meta.size,
       file: fileObj,
+      shareFile: fileObj ? prepareShareFile(fileObj, fileName, mime) : undefined,
       isNew: true,
       receivedAt: Date.now(),
       batchId: meta.batchId,
@@ -3164,21 +3173,7 @@ export default function ShareApp() {
     setDownloadLinks((prev) => prev.map((x) => (idSet.has(x.id) ? { ...x, isNew: false } : x)));
   };
 
-  const saveFile = async (item: DownloadLink) => {
-    setSaveFileError(null);
-    const result = await saveReceivedFile({
-      fileName: item.fileName,
-      url: item.url,
-      mime: item.mime,
-      file: item.file,
-    });
-    if (result === 'cancelled') return;
-    if (result === 'failed') {
-      setSaveFileError(t('saveFileFailed'));
-      window.setTimeout(() => setSaveFileError(null), 8000);
-      return;
-    }
-
+  const completeFileSaved = (item: DownloadLink) => {
     markFilesSaved([item.id]);
     if (item.opfsEntryName) {
       const entry = item.opfsEntryName;
@@ -3188,6 +3183,38 @@ export default function ShareApp() {
         prev.map((x) => (x.id === item.id ? { ...x, opfsEntryName: undefined } : x)),
       );
     }
+  };
+
+  const saveFileDesktop = async (item: DownloadLink) => {
+    const result = await saveReceivedFile({
+      fileName: item.fileName,
+      url: item.url,
+      mime: item.mime,
+      file: item.file,
+      shareFile: item.shareFile,
+    });
+    if (result === 'cancelled') return;
+    if (result === 'failed') {
+      setSaveFileError(t('saveFileFailed'));
+      window.setTimeout(() => setSaveFileError(null), 8000);
+      return;
+    }
+    completeFileSaved(item);
+  };
+
+  const saveFile = (item: DownloadLink) => {
+    setSaveFileError(null);
+    if (deviceHints.ios) {
+      markSaveInProgress();
+      setIosSaveItem(item);
+      return;
+    }
+    void saveFileDesktop(item);
+  };
+
+  const closeIosSaveModal = () => {
+    clearSaveInProgress();
+    setIosSaveItem(null);
   };
 
   const savePreview = (item: DownloadLink) => saveFile(item);
@@ -3867,6 +3894,21 @@ export default function ShareApp() {
             )}
           </div>
         </div>
+      ) : null}
+
+      {iosSaveItem ? (
+        <IosSaveModal
+          lang={lang}
+          item={{
+            fileName: iosSaveItem.fileName,
+            url: iosSaveItem.url,
+            mime: iosSaveItem.mime,
+            file: iosSaveItem.file,
+            shareFile: iosSaveItem.shareFile,
+          }}
+          onClose={closeIosSaveModal}
+          onSaved={() => completeFileSaved(iosSaveItem)}
+        />
       ) : null}
 
       {deleteAllConfirmOpen ? (
