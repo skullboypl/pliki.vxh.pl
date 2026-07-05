@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import {
   canUseReceivedDownloadUrl,
   createReceivedDownloadPath,
+  resolvedReceivedDownloadFileUrl,
   type ReceivedDownloadSource,
 } from '@/lib/receivedDownload';
 import {
@@ -26,7 +27,7 @@ const COPY = {
   pl: {
     title: 'Zapisz plik',
     downloadHint:
-      'Otworzy się strona pobierania. Dotknij „Pobierz plik”, potem „Wróć do apki”.',
+      'Otworzy się Safari z pobieraniem. Wróć do apki przełącznikiem. Plik znajdziesz w Pliki.',
     shareHint: 'Dotknij „Zapisz”, potem wybierz Zapisz w Plikach.',
     largeHint: (size: string) =>
       `Plik ma ${size}. Udostępnij nie zadziała, użyj Pobierz lub Podgląd.`,
@@ -42,7 +43,7 @@ const COPY = {
   },
   en: {
     title: 'Save file',
-    downloadHint: 'A download page opens. Tap Download file, then Back to app.',
+    downloadHint: 'Safari opens to download. Switch back to the app. Find the file in Files.',
     shareHint: 'Tap Save, then choose Save to Files.',
     largeHint: (size: string) =>
       `This file is ${size}. Share will not work; use Download or Preview.`,
@@ -130,6 +131,8 @@ export default function IosSaveModal({ lang, item, onClose, onSaved, onDownloadT
     onClose();
   };
 
+  const downloadHref = downloadPath ? resolvedReceivedDownloadFileUrl(downloadPath) : null;
+
   return (
     <div className="quota-modal-overlay" role="presentation" onClick={onClose}>
       <div
@@ -168,10 +171,13 @@ export default function IosSaveModal({ lang, item, onClose, onSaved, onDownloadT
         )}
 
         <div className="quota-modal__actions ios-save-modal__actions">
-          {downloadReady && downloadPath ? (
+          {downloadReady && downloadHref ? (
             <>
               <a
-                href={downloadPath}
+                href={downloadHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                download={item.fileName || 'file'}
                 className="btn-save"
                 onClick={() => finishDownloadTap()}
               >

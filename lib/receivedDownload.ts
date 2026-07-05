@@ -19,9 +19,18 @@ export function receivedDownloadPath(token: string): string {
   return `${DOWNLOAD_PREFIX}${token}`;
 }
 
-/** File stream URL (SW serves bytes). Landing page uses path without dl=1. */
+/** File stream URL (SW serves bytes). */
 export function receivedDownloadFileUrl(path: string): string {
   return path.includes('?') ? `${path}&dl=1` : `${path}?dl=1`;
+}
+
+/** Absolute same-origin URL for opening download outside PWA (Safari tab). */
+export function resolvedReceivedDownloadFileUrl(path: string): string {
+  const filePath = receivedDownloadFileUrl(path);
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return new URL(filePath, window.location.origin).href;
+  }
+  return filePath;
 }
 
 export async function createReceivedDownloadPath(
