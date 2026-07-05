@@ -1,5 +1,6 @@
 import { zipSync } from 'fflate';
 import type { ReceivedFile } from '@/components/ReceivedFilesList';
+import { saveBlobDownload } from '@/lib/saveReceivedFile';
 
 async function fileBytes(link: ReceivedFile): Promise<Uint8Array> {
   if (link.file) return new Uint8Array(await link.file.arrayBuffer());
@@ -36,20 +37,6 @@ export function uniqueEntryNames(links: ReceivedFile[]): string[] {
   });
 }
 
-function triggerDownload(blob: Blob, fileName: string) {
-  const url = URL.createObjectURL(blob);
-  try {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  } finally {
-    window.setTimeout(() => URL.revokeObjectURL(url), 5000);
-  }
-}
-
 export async function downloadBundleAsZip(links: ReceivedFile[], zipName?: string) {
   if (!links.length) return;
   const names = uniqueEntryNames(links);
@@ -59,7 +46,8 @@ export async function downloadBundleAsZip(links: ReceivedFile[], zipName?: strin
   }
   const zipped = zipSync(entries);
   const blob = new Blob([zipped], { type: 'application/zip' });
-  triggerDownload(blob, zipName || bundleZipName(links));
+  const result = await saveBlobDownload(blob, zipName || bundleZipName(links));
+  if (result === 'failed') throw new Error('zip save failed');
 }
 
 export function downloadAllFiles(
