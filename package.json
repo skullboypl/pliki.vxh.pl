@@ -1,6 +1,6 @@
 {
   "name": "share-files-local",
-  "version": "3.10.0",
+  "version": "3.11.0",
   "license": "MIT",
   "private": true,
   "packageManager": "pnpm@10.22.0",
