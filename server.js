@@ -561,9 +561,9 @@ app.prepare().then(() => {
     if (pathname.startsWith('/received-file/')) {
       setNoCacheHeaders(res);
       res.statusCode = 503;
-      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.end(
-        'Pobieranie wymaga aktywnej aplikacji. Zamknij i otwórz PWA ponownie, potem dotknij Pobierz.',
+        '<!DOCTYPE html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pobierz plik</title></head><body style="font-family:system-ui,sans-serif;background:#0a0a0a;color:#e8e8e8;padding:24px"><p>Pobieranie wymaga aktywnej aplikacji. Zamknij i otwórz PWA ponownie.</p><p><a href="/" style="color:#9ab08f">Wróć do apki</a></p></body></html>',
       );
       return;
     }

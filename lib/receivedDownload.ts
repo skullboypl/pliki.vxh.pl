@@ -19,8 +19,14 @@ export function receivedDownloadPath(token: string): string {
   return `${DOWNLOAD_PREFIX}${token}`;
 }
 
+/** File stream URL (SW serves bytes). Landing page uses path without dl=1. */
+export function receivedDownloadFileUrl(path: string): string {
+  return path.includes('?') ? `${path}&dl=1` : `${path}?dl=1`;
+}
+
 export async function createReceivedDownloadPath(
   source: ReceivedDownloadSource,
+  lang?: 'pl' | 'en',
 ): Promise<string | null> {
   if (!source.opfsEntryName || !hasOpfsSupport()) return null;
 
@@ -46,7 +52,7 @@ export async function createReceivedDownloadPath(
     }
   }
 
-  return receivedDownloadPath(token);
+  return lang ? `${receivedDownloadPath(token)}?lang=${lang}` : receivedDownloadPath(token);
 }
 
 /** Same-origin URL download (user tap on real <a>, not programmatic blob). */
@@ -59,7 +65,7 @@ export async function triggerReceivedDownload(source: ReceivedDownloadSource): P
   const path = await createReceivedDownloadPath(source);
   if (!path || typeof document === 'undefined') return false;
   const a = document.createElement('a');
-  a.href = path;
+  a.href = receivedDownloadFileUrl(path);
   a.download = source.fileName || 'file';
   document.body.appendChild(a);
   a.click();

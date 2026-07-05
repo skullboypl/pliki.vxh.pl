@@ -25,7 +25,8 @@ function formatSize(bytes: number) {
 const COPY = {
   pl: {
     title: 'Zapisz plik',
-    downloadHint: 'Dotknij „Pobierz”. Plik poleci jak zwykłe pobieranie z internetu.',
+    downloadHint:
+      'Otworzy się strona pobierania. Dotknij „Pobierz plik”, potem „Wróć do apki”.',
     shareHint: 'Dotknij „Zapisz”, potem wybierz Zapisz w Plikach.',
     largeHint: (size: string) =>
       `Plik ma ${size}. Udostępnij nie zadziała, użyj Pobierz lub Podgląd.`,
@@ -41,7 +42,7 @@ const COPY = {
   },
   en: {
     title: 'Save file',
-    downloadHint: 'Tap Download. The file saves like a normal web download.',
+    downloadHint: 'A download page opens. Tap Download file, then Back to app.',
     shareHint: 'Tap Save, then choose Save to Files.',
     largeHint: (size: string) =>
       `This file is ${size}. Share will not work; use Download or Preview.`,
@@ -88,7 +89,7 @@ export default function IosSaveModal({ lang, item, onClose, onSaved, onDownloadT
     setDownloadReady(false);
     void (async () => {
       try {
-        const path = await createReceivedDownloadPath(item);
+        const path = await createReceivedDownloadPath(item, lang);
         if (!cancelled) setDownloadPath(path);
       } catch {
         if (!cancelled) setDownloadPath(null);
@@ -99,7 +100,7 @@ export default function IosSaveModal({ lang, item, onClose, onSaved, onDownloadT
     return () => {
       cancelled = true;
     };
-  }, [canDownload, item.fileName, item.mime, item.opfsEntryName, item.size]);
+  }, [canDownload, item.fileName, item.mime, item.opfsEntryName, item.size, lang]);
 
   const onSaveClick = async () => {
     if (busy || tooLarge) return;
@@ -171,7 +172,6 @@ export default function IosSaveModal({ lang, item, onClose, onSaved, onDownloadT
             <>
               <a
                 href={downloadPath}
-                download={item.fileName || 'file'}
                 className="btn-save"
                 onClick={() => finishDownloadTap()}
               >
