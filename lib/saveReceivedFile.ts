@@ -30,6 +30,19 @@ function fileExtension(name: string): string {
   return dot > 0 ? name.slice(dot).toLowerCase() : '';
 }
 
+/**
+ * MDN shareable video extensions: .mp4 / .m4v only (not .mov).
+ * https://developer.mozilla.org/en-US/docs/Web/API/Navigator/share#shareable_file_types
+ */
+function iosShareFileName(fileName: string): string {
+  const ext = fileExtension(fileName);
+  if (ext === '.mov') {
+    const base = fileName.slice(0, -ext.length);
+    return `${base}.mp4`;
+  }
+  return fileName;
+}
+
 /** iOS Web Share accepts only a subset of MIME types; .mov often arrives as video/quicktime. */
 export function iosShareMime(fileName: string, mime: string): string {
   const ext = fileExtension(fileName);
@@ -49,41 +62,22 @@ export function isIosDevice(): boolean {
 
 /** Prepare a shareable File copy while the blob is still in memory (sync, no extra RAM). */
 export function prepareShareFile(file: File, fileName: string, mime: string): File {
-  const name = fileName || file.name || 'file';
-  const candidates = [
-    iosShareMime(name, file.type || mime),
-    file.type || mime,
-    'video/quicktime',
-    'video/mp4',
-  ].filter((value, index, list) => value && list.indexOf(value) === index) as string[];
-
-  for (const shareMime of candidates) {
-    const blob = file.slice(0, file.size, shareMime);
-    const shareFile = new File([blob], name, {
-      type: shareMime,
-      lastModified: file.lastModified ?? Date.now(),
-    });
-    if (
-      typeof navigator === 'undefined' ||
-      !navigator.canShare ||
-      navigator.canShare({ files: [shareFile] })
-    ) {
-      return shareFile;
-    }
-  }
-
-  const fallbackMime = iosShareMime(name, file.type || mime);
-  const blob = file.slice(0, file.size, fallbackMime);
-  return new File([blob], name, {
-    type: fallbackMime,
+  const shareName = iosShareFileName(fileName || file.name || 'file');
+  const shareMime = iosShareMime(shareName, file.type || mime);
+  const blob = file.slice(0, file.size, shareMime);
+  return new File([blob], shareName, {
+    type: shareMime,
     lastModified: file.lastModified ?? Date.now(),
   });
 }
 
 function buildShareFile(item: SaveableFile, mime: string): File | null {
-  if (item.shareFile && item.shareFile.type === mime) return item.shareFile;
   const source = item.file;
   if (!source) return null;
+  const shareName = iosShareFileName(item.fileName || source.name || 'file');
+  if (item.shareFile && item.shareFile.name === shareName && item.shareFile.type === mime) {
+    return item.shareFile;
+  }
   return prepareShareFile(source, item.fileName || source.name || 'file', mime);
 }
 
@@ -106,32 +100,27 @@ function isAbortError(err: unknown): boolean {
 }
 
 function shareMimeCandidates(item: SaveableFile): string[] {
+  const shareName = iosShareFileName(item.fileName);
   const declared = item.file?.type || item.mime;
-  const ext = fileExtension(item.fileName);
-  const out: string[] = [];
-  const push = (mime?: string) => {
-    if (!mime || out.includes(mime)) return;
-    out.push(mime);
-  };
-  push(iosShareMime(item.fileName, declared));
-  if (ext === '.mov') {
-    push('video/quicktime');
-    push('video/mp4');
-  }
-  push(declared);
-  return out;
+  return [iosShareMime(shareName, declared)];
 }
 
 /**
- * Direct share call from a user tap (e.g. modal button). iOS requires { files } only.
+ * iOS PWA: Web Share with { files } only (no title/text).
+ * See: https://stackoverflow.com/questions/69288906
  */
 export async function shareFileOnIos(item: SaveableFile): Promise<SaveReceivedFileResult> {
   if (typeof navigator.share !== 'function') return 'failed';
 
+  const tryShare = async (file: File) => {
+    if (navigator.canShare && !navigator.canShare({ files: [file] })) return 'failed' as const;
+    await navigator.share({ files: [file] });
+    return 'saved' as const;
+  };
+
   if (item.shareFile) {
     try {
-      await navigator.share({ files: [item.shareFile] });
-      return 'saved';
+      return await tryShare(item.shareFile);
     } catch (err) {
       if (isAbortError(err)) return 'cancelled';
     }
@@ -140,10 +129,8 @@ export async function shareFileOnIos(item: SaveableFile): Promise<SaveReceivedFi
   for (const mime of shareMimeCandidates(item)) {
     const file = buildShareFile(item, mime);
     if (!file) continue;
-    if (navigator.canShare && !navigator.canShare({ files: [file] })) continue;
     try {
-      await navigator.share({ files: [file] });
-      return 'saved';
+      return await tryShare(file);
     } catch (err) {
       if (isAbortError(err)) return 'cancelled';
     }
