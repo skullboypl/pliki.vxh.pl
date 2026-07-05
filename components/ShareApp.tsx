@@ -852,6 +852,8 @@ export default function ShareApp() {
   const [iosSaveItem, setIosSaveItem] = useState<DownloadLink | null>(null);
   const [previewItem, setPreviewItem] = useState<DownloadLink | null>(null);
   const previewBlobUrlRef = useRef<string | null>(null);
+  const iosDownloadGuardRef = useRef(false);
+  const iosDownloadGuardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [otherClientSurface, setOtherClientSurface] = useState<ClientSurface | null>(null);
   const [deleteAllConfirmOpen, setDeleteAllConfirmOpen] = useState(false);
   const [zipListModal, setZipListModal] = useState<{
@@ -3194,6 +3196,11 @@ export default function ShareApp() {
     setDownloadLinks((prev) => prev.map((x) => (idSet.has(x.id) ? { ...x, isNew: false } : x)));
   };
 
+  /** Mark saved in UI only. OPFS stays until user deletes the item or share path purges it. */
+  const markFileSavedOnly = (item: DownloadLink) => {
+    markFilesSaved([item.id]);
+  };
+
   const completeFileSaved = (item: DownloadLink) => {
     markFilesSaved([item.id]);
     if (item.opfsEntryName) {
@@ -3211,7 +3218,7 @@ export default function ShareApp() {
       try {
         const ok = await triggerReceivedDownload(item);
         if (ok) {
-          completeFileSaved(item);
+          markFileSavedOnly(item);
           return;
         }
       } catch {
@@ -3244,8 +3251,33 @@ export default function ShareApp() {
     void saveFileDesktop(item);
   };
 
-  const closeIosSaveModal = () => {
+  const clearIosDownloadGuard = () => {
+    iosDownloadGuardRef.current = false;
+    if (iosDownloadGuardTimerRef.current) {
+      clearTimeout(iosDownloadGuardTimerRef.current);
+      iosDownloadGuardTimerRef.current = null;
+    }
     clearSaveInProgress();
+  };
+
+  const beginIosDownloadGuard = () => {
+    iosDownloadGuardRef.current = true;
+    markSaveInProgress();
+    if (iosDownloadGuardTimerRef.current) clearTimeout(iosDownloadGuardTimerRef.current);
+    iosDownloadGuardTimerRef.current = setTimeout(() => {
+      iosDownloadGuardTimerRef.current = null;
+      iosDownloadGuardRef.current = false;
+      clearSaveInProgress();
+    }, 45 * 60 * 1000);
+  };
+
+  const handleIosDownloadTap = (item: DownloadLink) => {
+    markFileSavedOnly(item);
+    beginIosDownloadGuard();
+  };
+
+  const closeIosSaveModal = () => {
+    if (!iosDownloadGuardRef.current) clearSaveInProgress();
     setIosSaveItem(null);
   };
 
@@ -3942,6 +3974,7 @@ export default function ShareApp() {
           }}
           onClose={closeIosSaveModal}
           onSaved={() => completeFileSaved(iosSaveItem)}
+          onDownloadTap={() => handleIosDownloadTap(iosSaveItem)}
           onPreview={() => openPreview(iosSaveItem)}
         />
       ) : null}

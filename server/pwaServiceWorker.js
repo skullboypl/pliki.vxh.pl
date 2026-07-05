@@ -59,6 +59,7 @@ async function serveReceivedDownload(token){
       }
     });
   }catch(err){
+    console.error('[vxh] received download failed',err);
     return new Response('Download failed',{status:500,headers:{'Content-Type':'text/plain; charset=utf-8'}});
   }
 }

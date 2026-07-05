@@ -62,10 +62,12 @@ type Props = {
   item: SaveableFile & ReceivedDownloadSource;
   onClose: () => void;
   onSaved: () => void;
+  /** SW stream download: do not purge OPFS until the file has been served. */
+  onDownloadTap?: () => void;
   onPreview?: () => void;
 };
 
-export default function IosSaveModal({ lang, item, onClose, onSaved, onPreview }: Props) {
+export default function IosSaveModal({ lang, item, onClose, onSaved, onDownloadTap, onPreview }: Props) {
   const t = COPY[lang];
   const [shareError, setShareError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -123,7 +125,7 @@ export default function IosSaveModal({ lang, item, onClose, onSaved, onPreview }
   };
 
   const finishDownloadTap = () => {
-    onSaved();
+    onDownloadTap?.();
     onClose();
   };
 
