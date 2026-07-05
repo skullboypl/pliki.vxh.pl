@@ -8,7 +8,7 @@ export type SaveableFile = {
 
 export type SaveReceivedFileResult = 'saved' | 'cancelled' | 'failed';
 
-/** iOS Web Share MIME for non-video types. */
+/** iOS Web Share MIME for generic non-media types. */
 const IOS_SHARE_MIME_BY_EXT: Record<string, string> = {
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
@@ -17,17 +17,34 @@ const IOS_SHARE_MIME_BY_EXT: Record<string, string> = {
   '.webp': 'image/webp',
   '.heic': 'image/heic',
   '.pdf': 'application/pdf',
-  '.mp3': 'audio/mpeg',
-  '.m4a': 'audio/mp4',
-  '.wav': 'audio/wav',
   '.zip': 'application/zip',
 };
 
 /**
- * Video extensions → iOS-shareable name + MIME.
- * MDN list: .mp4, .m4v, .mpeg, .mpg, .ogm, .ogv, .webm
+ * Audio extensions → iOS-shareable name + MIME.
+ * MDN: .flac, .m4a (audio/x-m4a), .mp3, .oga, .ogg, .opus, .wav, .weba
  * https://developer.mozilla.org/en-US/docs/Web/API/Navigator/share#shareable_file_types
- * Others (.mov, .mkv, .avi…) remap to .mp4 for share; preview keeps original name/type.
+ */
+const IOS_AUDIO_SHARE_BY_EXT: Record<string, { shareExt: string; shareMime: string }> = {
+  '.mp3': { shareExt: '.mp3', shareMime: 'audio/mpeg' },
+  '.m4a': { shareExt: '.m4a', shareMime: 'audio/x-m4a' },
+  '.wav': { shareExt: '.wav', shareMime: 'audio/wav' },
+  '.flac': { shareExt: '.flac', shareMime: 'audio/flac' },
+  '.ogg': { shareExt: '.ogg', shareMime: 'audio/ogg' },
+  '.oga': { shareExt: '.oga', shareMime: 'audio/ogg' },
+  '.opus': { shareExt: '.opus', shareMime: 'audio/ogg' },
+  '.weba': { shareExt: '.weba', shareMime: 'audio/webm' },
+  '.aac': { shareExt: '.m4a', shareMime: 'audio/x-m4a' },
+  '.aif': { shareExt: '.wav', shareMime: 'audio/wav' },
+  '.aiff': { shareExt: '.wav', shareMime: 'audio/wav' },
+  '.wma': { shareExt: '.mp3', shareMime: 'audio/mpeg' },
+  '.mid': { shareExt: '.mp3', shareMime: 'audio/mpeg' },
+  '.midi': { shareExt: '.mp3', shareMime: 'audio/mpeg' },
+};
+
+/**
+ * Video extensions → iOS-shareable name + MIME.
+ * MDN: .mp4, .m4v, .mpeg, .mpg, .ogm, .ogv, .webm
  */
 const IOS_VIDEO_SHARE_BY_EXT: Record<string, { shareExt: string; shareMime: string }> = {
   '.mp4': { shareExt: '.mp4', shareMime: 'video/mp4' },
@@ -35,7 +52,6 @@ const IOS_VIDEO_SHARE_BY_EXT: Record<string, { shareExt: string; shareMime: stri
   '.mov': { shareExt: '.mp4', shareMime: 'video/mp4' },
   '.webm': { shareExt: '.webm', shareMime: 'video/webm' },
   '.ogv': { shareExt: '.ogv', shareMime: 'video/ogg' },
-  '.ogg': { shareExt: '.ogv', shareMime: 'video/ogg' },
   '.ogm': { shareExt: '.ogm', shareMime: 'video/ogg' },
   '.mpeg': { shareExt: '.mpeg', shareMime: 'video/mpeg' },
   '.mpg': { shareExt: '.mpg', shareMime: 'video/mpeg' },
@@ -61,10 +77,32 @@ function isVideoExtension(ext: string): boolean {
   return ext in IOS_VIDEO_SHARE_BY_EXT;
 }
 
+function isAudioExtension(ext: string): boolean {
+  return ext in IOS_AUDIO_SHARE_BY_EXT;
+}
+
 function isVideoFile(fileName: string, mime: string): boolean {
+  if (mime.startsWith('video/')) return true;
   const ext = fileExtension(fileName);
-  if (isVideoExtension(ext)) return true;
-  return mime.startsWith('video/');
+  return isVideoExtension(ext) && !mime.startsWith('audio/');
+}
+
+function isAudioFile(fileName: string, mime: string): boolean {
+  if (mime.startsWith('audio/')) return true;
+  const ext = fileExtension(fileName);
+  return isAudioExtension(ext);
+}
+
+function pushShareTarget(
+  out: Array<{ name: string; mime: string }>,
+  seen: Set<string>,
+  name: string,
+  shareMime: string,
+) {
+  const key = `${name.toLowerCase()}\0${shareMime}`;
+  if (seen.has(key)) return;
+  seen.add(key);
+  out.push({ name, mime: shareMime });
 }
 
 function videoShareTargets(fileName: string, mime: string): Array<{ name: string; mime: string }> {
@@ -73,30 +111,51 @@ function videoShareTargets(fileName: string, mime: string): Array<{ name: string
   const out: Array<{ name: string; mime: string }> = [];
   const seen = new Set<string>();
 
-  const push = (name: string, shareMime: string) => {
-    const key = `${name.toLowerCase()}\0${shareMime}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-    out.push({ name, mime: shareMime });
-  };
-
   const mapped = IOS_VIDEO_SHARE_BY_EXT[ext];
-  if (mapped) push(`${base}${mapped.shareExt}`, mapped.shareMime);
+  if (mapped) pushShareTarget(out, seen, `${base}${mapped.shareExt}`, mapped.shareMime);
 
-  if (mime === 'video/quicktime') push(`${base}.mp4`, 'video/mp4');
-  else if (mime.startsWith('video/')) push(`${base}.mp4`, mime === 'video/x-m4v' ? 'video/mp4' : mime);
+  if (mime === 'video/quicktime') pushShareTarget(out, seen, `${base}.mp4`, 'video/mp4');
+  else if (mime.startsWith('video/')) {
+    pushShareTarget(out, seen, `${base}.mp4`, mime === 'video/x-m4v' ? 'video/mp4' : mime);
+  }
 
-  push(`${base}.mp4`, 'video/mp4');
+  pushShareTarget(out, seen, `${base}.mp4`, 'video/mp4');
+  return out;
+}
+
+function audioShareTargets(fileName: string, mime: string): Array<{ name: string; mime: string }> {
+  const ext = fileExtension(fileName);
+  const base = fileBaseName(fileName) || 'file';
+  const out: Array<{ name: string; mime: string }> = [];
+  const seen = new Set<string>();
+
+  const mapped = IOS_AUDIO_SHARE_BY_EXT[ext];
+  if (mapped) pushShareTarget(out, seen, `${base}${mapped.shareExt}`, mapped.shareMime);
+
+  const mt = mime.toLowerCase();
+  if (mt === 'audio/mp4' || mt === 'audio/x-m4a') {
+    pushShareTarget(out, seen, `${base}.m4a`, 'audio/x-m4a');
+  } else if (mt === 'audio/mp3' || mt === 'audio/mpeg') {
+    pushShareTarget(out, seen, `${base}.mp3`, 'audio/mpeg');
+  } else if (mt.startsWith('audio/')) {
+    pushShareTarget(out, seen, `${base}.mp3`, mt);
+    pushShareTarget(out, seen, `${base}.m4a`, 'audio/x-m4a');
+  }
+
+  pushShareTarget(out, seen, `${base}.mp3`, 'audio/mpeg');
   return out;
 }
 
 /** Display name stays original; share name may remap extension for iOS. */
 export function iosShareFileName(fileName: string, mime = ''): string {
   const ext = fileExtension(fileName);
+  const base = fileBaseName(fileName);
+
+  if (isAudioFile(fileName, mime) && isAudioExtension(ext)) {
+    return `${base}${IOS_AUDIO_SHARE_BY_EXT[ext].shareExt}`;
+  }
   if (isVideoExtension(ext)) {
-    const base = fileBaseName(fileName);
-    const mapped = IOS_VIDEO_SHARE_BY_EXT[ext];
-    return `${base}${mapped.shareExt}`;
+    return `${base}${IOS_VIDEO_SHARE_BY_EXT[ext].shareExt}`;
   }
   return fileName;
 }
@@ -104,13 +163,19 @@ export function iosShareFileName(fileName: string, mime = ''): string {
 /** iOS Web Share MIME from extension or declared type. */
 export function iosShareMime(fileName: string, mime: string): string {
   const ext = fileExtension(fileName);
+  const audioMapped = IOS_AUDIO_SHARE_BY_EXT[ext];
+  if (audioMapped && isAudioFile(fileName, mime)) return audioMapped.shareMime;
+
   const videoMapped = IOS_VIDEO_SHARE_BY_EXT[ext];
   if (videoMapped) return videoMapped.shareMime;
 
   const fromExt = IOS_SHARE_MIME_BY_EXT[ext];
   if (fromExt) return fromExt;
 
-  if (mime === 'video/quicktime' || mime === 'video/x-m4v') return 'video/mp4';
+  const mt = mime.toLowerCase();
+  if (mt === 'audio/mp4') return 'audio/x-m4a';
+  if (mt === 'audio/mp3') return 'audio/mpeg';
+  if (mt === 'video/quicktime' || mt === 'video/x-m4v') return 'video/mp4';
   if (!mime || mime === 'application/octet-stream') return mime || 'application/octet-stream';
   return mime;
 }
@@ -136,6 +201,7 @@ function makeShareFile(source: File, name: string, mime: string): File {
 
 function shareTargetsForFile(fileName: string, mime: string): Array<{ name: string; mime: string }> {
   if (isVideoFile(fileName, mime)) return videoShareTargets(fileName, mime);
+  if (isAudioFile(fileName, mime)) return audioShareTargets(fileName, mime);
   return [{ name: fileName, mime: iosShareMime(fileName, mime) }];
 }
 
@@ -148,12 +214,6 @@ export function prepareShareFile(file: File, fileName: string, mime: string): Fi
   }
   const fallback = shareTargetsForFile(fileName || file.name || 'file', declared)[0];
   return makeShareFile(file, fallback.name, fallback.mime);
-}
-
-function buildShareFile(item: SaveableFile, name: string, mime: string): File | null {
-  const source = item.file;
-  if (!source) return null;
-  return makeShareFile(source, name, mime);
 }
 
 function shareFileCandidates(item: SaveableFile): File[] {
@@ -198,9 +258,7 @@ function isAbortError(err: unknown): boolean {
   return !!err && typeof err === 'object' && 'name' in err && (err as { name?: string }).name === 'AbortError';
 }
 
-/**
- * iOS PWA: Web Share with { files } only (no title/text).
- */
+/** iOS PWA: Web Share with { files } only (no title/text). */
 export async function shareFileOnIos(item: SaveableFile): Promise<SaveReceivedFileResult> {
   if (typeof navigator.share !== 'function') return 'failed';
 
