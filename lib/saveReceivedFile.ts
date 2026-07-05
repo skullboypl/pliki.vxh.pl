@@ -2,11 +2,26 @@ export type SaveableFile = {
   fileName: string;
   url: string;
   mime: string;
+  size?: number;
   file?: File;
   shareFile?: File;
 };
 
-export type SaveReceivedFileResult = 'saved' | 'cancelled' | 'failed';
+export type SaveReceivedFileResult = 'saved' | 'cancelled' | 'failed' | 'too_large';
+
+/**
+ * iOS WebKit often crashes navigator.share above ~50-100 MB (soft limit).
+ * MeTube uses 80 MB pre-flight: https://github.com/alexta69/metube/commit/6ff364a
+ */
+export const IOS_SHARE_MAX_BYTES = 80 * 1024 * 1024;
+
+export function iosShareFileSize(item: Pick<SaveableFile, 'file' | 'size'>): number {
+  return item.file?.size ?? item.size ?? 0;
+}
+
+export function isIosShareTooLarge(sizeBytes: number): boolean {
+  return sizeBytes > IOS_SHARE_MAX_BYTES;
+}
 
 /** iOS Web Share MIME for generic non-media types. */
 const IOS_SHARE_MIME_BY_EXT: Record<string, string> = {
@@ -231,12 +246,13 @@ function shareFileCandidates(item: SaveableFile): File[] {
     files.push(file);
   };
 
-  if (item.shareFile) push(item.shareFile);
-
-  for (const target of shareTargetsForFile(item.fileName || source.name || 'file', declared)) {
-    push(makeShareFile(source, target.name, target.mime));
+  if (item.shareFile) {
+    push(item.shareFile);
+    return files;
   }
 
+  const targets = shareTargetsForFile(item.fileName || source.name || 'file', declared);
+  if (targets[0]) push(makeShareFile(source, targets[0].name, targets[0].mime));
   return files;
 }
 
@@ -260,19 +276,20 @@ function isAbortError(err: unknown): boolean {
 
 /** iOS PWA: Web Share with { files } only (no title/text). */
 export async function shareFileOnIos(item: SaveableFile): Promise<SaveReceivedFileResult> {
+  if (isIosShareTooLarge(iosShareFileSize(item))) return 'too_large';
   if (typeof navigator.share !== 'function') return 'failed';
 
-  for (const file of shareFileCandidates(item)) {
-    if (!canShareFile(file)) continue;
-    try {
-      await navigator.share({ files: [file] });
-      return 'saved';
-    } catch (err) {
-      if (isAbortError(err)) return 'cancelled';
-    }
-  }
+  const candidates = shareFileCandidates(item);
+  const file = candidates[0];
+  if (!file || !canShareFile(file)) return 'failed';
 
-  return 'failed';
+  try {
+    await navigator.share({ files: [file] });
+    return 'saved';
+  } catch (err) {
+    if (isAbortError(err)) return 'cancelled';
+    return 'failed';
+  }
 }
 
 export async function saveReceivedFile(item: SaveableFile): Promise<SaveReceivedFileResult> {
