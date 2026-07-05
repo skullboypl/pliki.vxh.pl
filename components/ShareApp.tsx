@@ -18,6 +18,7 @@ import {
   type ClientSurface,
 } from '@/lib/clientSurface';
 import { formatDualSurfaceWarning, watchOtherClientSurface } from '@/lib/clientPresence';
+import { saveReceivedFile } from '@/lib/saveReceivedFile';
 import { IconFile, IconShareIos, IconSpinner, IconUpload, IconWifi } from '@/components/icons';
 import FileDropOverlay from '@/components/FileDropOverlay';
 import PeerQuickSend from '@/components/PeerQuickSend';
@@ -3159,35 +3160,22 @@ export default function ShareApp() {
   };
 
   const saveFile = async (item: DownloadLink) => {
-    try {
-      // iOS Safari: downloading MP4 from blob: via <a download> often fails with
-      // "WebKitBlobResource". Prefer the system share sheet when possible.
-      if (deviceHints.ios && item.file && navigator.canShare?.({ files: [item.file] })) {
-        await navigator.share({
-          files: [item.file],
-          title: item.fileName || 'file',
-        });
-        markFilesSaved([item.id]);
-        return;
-      }
+    const result = await saveReceivedFile({
+      fileName: item.fileName,
+      url: item.url,
+      mime: item.mime,
+      file: item.file,
+    });
+    if (result === 'cancelled' || result === 'failed') return;
 
-      const a = document.createElement('a');
-      a.href = item.url;
-      a.download = item.fileName || 'file';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      markFilesSaved([item.id]);
-      if (item.opfsEntryName) {
-        const entry = item.opfsEntryName;
-        removeReceivedFileManifest(entry);
-        void removeOpfsEntry(entry).then(() => refreshStorageSnapshot());
-        setDownloadLinks((prev) =>
-          prev.map((x) => (x.id === item.id ? { ...x, opfsEntryName: undefined } : x)),
-        );
-      }
-    } catch {
-      /* ignore */
+    markFilesSaved([item.id]);
+    if (item.opfsEntryName) {
+      const entry = item.opfsEntryName;
+      removeReceivedFileManifest(entry);
+      void removeOpfsEntry(entry).then(() => refreshStorageSnapshot());
+      setDownloadLinks((prev) =>
+        prev.map((x) => (x.id === item.id ? { ...x, opfsEntryName: undefined } : x)),
+      );
     }
   };
 
