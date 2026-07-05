@@ -8,20 +8,19 @@ type Lang = 'pl' | 'en';
 const COPY = {
   pl: {
     title: 'Zapisz plik',
-    hint: 'Dotknij „Pobierz”, potem wybierz Zapisz w Plikach lub Zapisz wideo.',
-    download: 'Pobierz',
-    share: 'Udostępnij…',
+    hint: 'Dotknij „Zapisz”, potem wybierz Zapisz w Plikach lub Zapisz wideo.',
+    save: 'Zapisz',
     cancel: 'Anuluj',
-    shareFailed: 'Udostępnianie niedostępne. Użyj przycisku Pobierz.',
+    shareFailed:
+      'Panel zapisu się nie otworzył. Zamknij PWA, otwórz ponownie i spróbuj jeszcze raz.',
     close: 'Zamknij',
   },
   en: {
     title: 'Save file',
-    hint: 'Tap Download, then choose Save to Files or Save Video.',
-    download: 'Download',
-    share: 'Share…',
+    hint: 'Tap Save, then choose Save to Files or Save Video.',
+    save: 'Save',
     cancel: 'Cancel',
-    shareFailed: 'Sharing unavailable. Use the Download button.',
+    shareFailed: 'Save panel did not open. Close the PWA, reopen it, and try again.',
     close: 'Close',
   },
 } as const;
@@ -36,22 +35,24 @@ type Props = {
 export default function IosSaveModal({ lang, item, onClose, onSaved }: Props) {
   const t = COPY[lang];
   const [shareError, setShareError] = useState<string | null>(null);
-  const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+  const [busy, setBusy] = useState(false);
 
-  const finishSaved = () => {
-    onSaved();
-    onClose();
-  };
-
-  const onShareClick = async () => {
+  const onSaveClick = async () => {
+    if (busy) return;
     setShareError(null);
-    const result = await shareFileOnIos(item);
-    if (result === 'saved') {
-      finishSaved();
-      return;
+    setBusy(true);
+    try {
+      const result = await shareFileOnIos(item);
+      if (result === 'saved') {
+        onSaved();
+        onClose();
+        return;
+      }
+      if (result === 'cancelled') return;
+      setShareError(t.shareFailed);
+    } finally {
+      setBusy(false);
     }
-    if (result === 'cancelled') return;
-    setShareError(t.shareFailed);
   };
 
   return (
@@ -74,19 +75,9 @@ export default function IosSaveModal({ lang, item, onClose, onSaved }: Props) {
         <p className="quota-modal__file-name ios-save-modal__name">{item.fileName}</p>
         <p className="quota-modal__text">{t.hint}</p>
         <div className="quota-modal__actions ios-save-modal__actions">
-          <a
-            href={item.url}
-            download={item.fileName || 'file'}
-            className="btn-save"
-            onClick={() => finishSaved()}
-          >
-            {t.download}
-          </a>
-          {canShare ? (
-            <button type="button" className="btn-save btn-save-outline" onClick={() => void onShareClick()}>
-              {t.share}
-            </button>
-          ) : null}
+          <button type="button" className="btn-save" disabled={busy} onClick={() => void onSaveClick()}>
+            {t.save}
+          </button>
           <button type="button" className="btn-ghost" onClick={onClose}>
             {t.cancel}
           </button>
