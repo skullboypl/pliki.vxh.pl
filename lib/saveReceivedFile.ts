@@ -5,6 +5,7 @@ export type SaveableFile = {
   size?: number;
   file?: File;
   shareFile?: File;
+  opfsEntryName?: string;
 };
 
 export type SaveReceivedFileResult = 'saved' | 'cancelled' | 'failed' | 'too_large';

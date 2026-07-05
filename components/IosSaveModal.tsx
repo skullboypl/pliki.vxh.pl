@@ -1,6 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import {
+  canUseReceivedDownloadUrl,
+  createReceivedDownloadPath,
+  type ReceivedDownloadSource,
+} from '@/lib/receivedDownload';
 import {
   iosShareFileSize,
   isIosShareTooLarge,
@@ -20,36 +25,41 @@ function formatSize(bytes: number) {
 const COPY = {
   pl: {
     title: 'Zapisz plik',
-    hint: 'Dotknij „Zapisz”, potem wybierz Zapisz w Plikach lub Zapisz wideo.',
+    downloadHint: 'Dotknij „Pobierz”. Plik poleci jak zwykłe pobieranie z internetu.',
+    shareHint: 'Dotknij „Zapisz”, potem wybierz Zapisz w Plikach.',
     largeHint: (size: string) =>
-      `Plik ma ${size}. iPhone w PWA nie zapisze tak dużego pliku przez Udostępnij (limit pamięci Safari, ok. 80 MB).`,
+      `Plik ma ${size}. Udostępnij nie zadziała, użyj Pobierz lub Podgląd.`,
     largeSteps:
-      'Użyj Podgląd → pełny ekran → ikona Udostępnij w odtwarzaczu iOS → Zapisz wideo / Zapisz w Plikach.',
+      'Jeśli Pobierz nie zadziała: Podgląd → pełny ekran → Udostępnij → Zapisz wideo.',
+    download: 'Pobierz',
     preview: 'Otwórz podgląd',
     save: 'Zapisz',
     cancel: 'Anuluj',
-    shareFailed:
-      'Panel zapisu się nie otworzył. Spróbuj Podgląd i zapis z pełnego ekranu.',
+    preparing: 'Przygotowuję link…',
+    shareFailed: 'Panel zapisu się nie otworzył. Użyj Pobierz lub Podgląd.',
     close: 'Zamknij',
   },
   en: {
     title: 'Save file',
-    hint: 'Tap Save, then choose Save to Files or Save Video.',
+    downloadHint: 'Tap Download. The file saves like a normal web download.',
+    shareHint: 'Tap Save, then choose Save to Files.',
     largeHint: (size: string) =>
-      `This file is ${size}. iPhone PWA cannot save it via Share (Safari memory limit, about 80 MB).`,
+      `This file is ${size}. Share will not work; use Download or Preview.`,
     largeSteps:
-      'Use Preview → fullscreen → iOS player Share icon → Save Video / Save to Files.',
+      'If Download fails: Preview → fullscreen → Share → Save Video.',
+    download: 'Download',
     preview: 'Open preview',
     save: 'Save',
     cancel: 'Cancel',
-    shareFailed: 'Save panel did not open. Try Preview and save from fullscreen.',
+    preparing: 'Preparing link…',
+    shareFailed: 'Save panel did not open. Use Download or Preview.',
     close: 'Close',
   },
 } as const;
 
 type Props = {
   lang: Lang;
-  item: SaveableFile;
+  item: SaveableFile & ReceivedDownloadSource;
   onClose: () => void;
   onSaved: () => void;
   onPreview?: () => void;
@@ -59,8 +69,35 @@ export default function IosSaveModal({ lang, item, onClose, onSaved, onPreview }
   const t = COPY[lang];
   const [shareError, setShareError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [downloadPath, setDownloadPath] = useState<string | null>(null);
+  const [downloadReady, setDownloadReady] = useState(false);
+
   const fileSize = iosShareFileSize(item);
   const tooLarge = isIosShareTooLarge(fileSize);
+  const canDownload = canUseReceivedDownloadUrl(item);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!canDownload) {
+      setDownloadPath(null);
+      setDownloadReady(true);
+      return;
+    }
+    setDownloadReady(false);
+    void (async () => {
+      try {
+        const path = await createReceivedDownloadPath(item);
+        if (!cancelled) setDownloadPath(path);
+      } catch {
+        if (!cancelled) setDownloadPath(null);
+      } finally {
+        if (!cancelled) setDownloadReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [canDownload, item.fileName, item.mime, item.opfsEntryName, item.size]);
 
   const onSaveClick = async () => {
     if (busy || tooLarge) return;
@@ -85,6 +122,11 @@ export default function IosSaveModal({ lang, item, onClose, onSaved, onPreview }
     onClose();
   };
 
+  const finishDownloadTap = () => {
+    onSaved();
+    onClose();
+  };
+
   return (
     <div className="quota-modal-overlay" role="presentation" onClick={onClose}>
       <div
@@ -103,26 +145,51 @@ export default function IosSaveModal({ lang, item, onClose, onSaved, onPreview }
           </button>
         </div>
         <p className="quota-modal__file-name ios-save-modal__name">{item.fileName}</p>
-        {tooLarge ? (
+
+        {!downloadReady ? (
+          <p className="quota-modal__text">{t.preparing}</p>
+        ) : downloadPath ? (
+          <>
+            <p className="quota-modal__text">{t.downloadHint}</p>
+            {tooLarge ? (
+              <p className="quota-modal__text ios-save-modal__steps">{t.largeHint(formatSize(fileSize))}</p>
+            ) : null}
+          </>
+        ) : tooLarge ? (
           <>
             <p className="quota-modal__text">{t.largeHint(formatSize(fileSize))}</p>
             <p className="quota-modal__text ios-save-modal__steps">{t.largeSteps}</p>
           </>
         ) : (
-          <p className="quota-modal__text">{t.hint}</p>
+          <p className="quota-modal__text">{t.shareHint}</p>
         )}
+
         <div className="quota-modal__actions ios-save-modal__actions">
-          {tooLarge ? (
-            onPreview ? (
-              <button type="button" className="btn-save" onClick={openPreview}>
-                {t.preview}
-              </button>
-            ) : null
-          ) : (
+          {downloadReady && downloadPath ? (
+            <>
+              <a
+                href={downloadPath}
+                download={item.fileName || 'file'}
+                className="btn-save"
+                onClick={() => finishDownloadTap()}
+              >
+                {t.download}
+              </a>
+              {tooLarge && onPreview ? (
+                <button type="button" className="btn-ghost" onClick={openPreview}>
+                  {t.preview}
+                </button>
+              ) : null}
+            </>
+          ) : downloadReady && tooLarge && onPreview ? (
+            <button type="button" className="btn-save" onClick={openPreview}>
+              {t.preview}
+            </button>
+          ) : downloadReady ? (
             <button type="button" className="btn-save" disabled={busy} onClick={() => void onSaveClick()}>
               {t.save}
             </button>
-          )}
+          ) : null}
           <button type="button" className="btn-ghost" onClick={onClose}>
             {t.cancel}
           </button>

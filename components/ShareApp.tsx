@@ -18,7 +18,17 @@ import {
   type ClientSurface,
 } from '@/lib/clientSurface';
 import { formatDualSurfaceWarning, watchOtherClientSurface } from '@/lib/clientPresence';
-import { saveReceivedFile, prepareShareFile, IOS_SHARE_MAX_BYTES, isIosShareTooLarge } from '@/lib/saveReceivedFile';
+import {
+  saveReceivedFile,
+  prepareShareFile,
+  IOS_SHARE_MAX_BYTES,
+  isIosShareTooLarge,
+} from '@/lib/saveReceivedFile';
+import {
+  canUseReceivedDownloadUrl,
+  createReceivedDownloadPath,
+  triggerReceivedDownload,
+} from '@/lib/receivedDownload';
 import IosSaveModal from '@/components/IosSaveModal';
 import { IconFile, IconShareIos, IconSpinner, IconUpload, IconWifi } from '@/components/icons';
 import FileDropOverlay from '@/components/FileDropOverlay';
@@ -3197,6 +3207,17 @@ export default function ShareApp() {
   };
 
   const saveFileDesktop = async (item: DownloadLink) => {
+    if (canUseReceivedDownloadUrl(item)) {
+      try {
+        const ok = await triggerReceivedDownload(item);
+        if (ok) {
+          completeFileSaved(item);
+          return;
+        }
+      } catch {
+        /* fall through to blob download */
+      }
+    }
     const result = await saveReceivedFile({
       fileName: item.fileName,
       url: item.url,
@@ -3917,6 +3938,7 @@ export default function ShareApp() {
             size: iosSaveItem.size ?? iosSaveItem.file?.size,
             file: iosSaveItem.file,
             shareFile: iosSaveItem.shareFile,
+            opfsEntryName: iosSaveItem.opfsEntryName,
           }}
           onClose={closeIosSaveModal}
           onSaved={() => completeFileSaved(iosSaveItem)}

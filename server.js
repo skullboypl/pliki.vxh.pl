@@ -558,6 +558,16 @@ app.prepare().then(() => {
       return;
     }
 
+    if (pathname.startsWith('/received-file/')) {
+      setNoCacheHeaders(res);
+      res.statusCode = 503;
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.end(
+        'Pobieranie wymaga aktywnej aplikacji. Zamknij i otwórz PWA ponownie, potem dotknij Pobierz.',
+      );
+      return;
+    }
+
     if (!isImmutableAsset(pathname)) {
       setNoCacheHeaders(res);
       if (devHttps) {
