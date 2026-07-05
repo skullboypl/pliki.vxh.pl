@@ -26,8 +26,7 @@ function formatSize(bytes: number) {
 const COPY = {
   pl: {
     title: 'Zapisz plik',
-    downloadHint:
-      'Otworzy się Safari z pobieraniem. Wróć do apki przełącznikiem. Plik znajdziesz w Pliki.',
+    downloadHint: 'Dotknij „Pobierz”, aby zapisać plik.',
     shareHint: 'Dotknij „Zapisz”, potem wybierz Zapisz w Plikach.',
     largeHint: (size: string) =>
       `Plik ma ${size}. Udostępnij nie zadziała, użyj Pobierz lub Podgląd.`,
@@ -43,7 +42,7 @@ const COPY = {
   },
   en: {
     title: 'Save file',
-    downloadHint: 'Safari opens to download. Switch back to the app. Find the file in Files.',
+    downloadHint: 'Tap Download to save the file.',
     shareHint: 'Tap Save, then choose Save to Files.',
     largeHint: (size: string) =>
       `This file is ${size}. Share will not work; use Download or Preview.`,
