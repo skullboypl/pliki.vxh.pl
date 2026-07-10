@@ -24,11 +24,6 @@ import {
   IOS_SHARE_MAX_BYTES,
   isIosShareTooLarge,
 } from '@/lib/saveReceivedFile';
-import {
-  canUseReceivedDownloadUrl,
-  createReceivedDownloadPath,
-  triggerReceivedDownload,
-} from '@/lib/receivedDownload';
 import IosSaveModal from '@/components/IosSaveModal';
 import { IconFile, IconShareIos, IconSpinner, IconUpload, IconWifi } from '@/components/icons';
 import FileDropOverlay from '@/components/FileDropOverlay';
@@ -3210,17 +3205,6 @@ export default function ShareApp() {
   };
 
   const saveFileDesktop = async (item: DownloadLink) => {
-    if (canUseReceivedDownloadUrl(item)) {
-      try {
-        const ok = await triggerReceivedDownload(item);
-        if (ok) {
-          markFileSavedOnly(item);
-          return;
-        }
-      } catch {
-        /* fall through to blob download */
-      }
-    }
     const result = await saveReceivedFile({
       fileName: item.fileName,
       url: item.url,
