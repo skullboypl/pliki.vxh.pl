@@ -257,14 +257,25 @@ function shareFileCandidates(item: SaveableFile): File[] {
   return files;
 }
 
+function downloadUrlForItem(item: SaveableFile): { url: string; revokeAfterMs?: number } {
+  if (item.file) {
+    return { url: URL.createObjectURL(item.file), revokeAfterMs: 60_000 };
+  }
+  return { url: item.url };
+}
+
 function triggerAnchorDownload(item: SaveableFile): boolean {
   try {
+    const { url, revokeAfterMs } = downloadUrlForItem(item);
     const a = document.createElement('a');
-    a.href = item.url;
+    a.href = url;
     a.download = item.fileName || 'file';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    if (revokeAfterMs) {
+      window.setTimeout(() => URL.revokeObjectURL(url), revokeAfterMs);
+    }
     return true;
   } catch {
     return false;
@@ -295,6 +306,11 @@ export async function shareFileOnIos(item: SaveableFile): Promise<SaveReceivedFi
 
 export async function saveReceivedFile(item: SaveableFile): Promise<SaveReceivedFileResult> {
   if (isIosDevice()) return shareFileOnIos(item);
+  return triggerAnchorDownload(item) ? 'saved' : 'failed';
+}
+
+/** Desktop: sync save in click handler (keeps user gesture for anchor download). */
+export function saveReceivedFileDesktop(item: SaveableFile): SaveReceivedFileResult {
   return triggerAnchorDownload(item) ? 'saved' : 'failed';
 }
 

@@ -20,6 +20,7 @@ import {
 import { formatDualSurfaceWarning, watchOtherClientSurface } from '@/lib/clientPresence';
 import {
   saveReceivedFile,
+  saveReceivedFileDesktop,
   prepareShareFile,
   IOS_SHARE_MAX_BYTES,
   isIosShareTooLarge,
@@ -3204,8 +3205,8 @@ export default function ShareApp() {
     }
   };
 
-  const saveFileDesktop = async (item: DownloadLink) => {
-    const result = await saveReceivedFile({
+  const saveFileDesktop = (item: DownloadLink) => {
+    const result = saveReceivedFileDesktop({
       fileName: item.fileName,
       url: item.url,
       mime: item.mime,
@@ -3218,7 +3219,7 @@ export default function ShareApp() {
       window.setTimeout(() => setSaveFileError(null), 8000);
       return;
     }
-    completeFileSaved(item);
+    markFileSavedOnly(item);
   };
 
   const saveFile = (item: DownloadLink) => {
