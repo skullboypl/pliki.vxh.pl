@@ -2599,6 +2599,57 @@ button.btn-send {
   flex-wrap: wrap;
 }
 
+.ios-save-methods {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0 4px;
+}
+
+.ios-save-method {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid #2e4a35;
+  border-radius: 10px;
+  background: #141a16;
+  color: #e8e8e8;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.ios-save-method--link {
+  background: #1a2e1f;
+  border-color: #3d7a4a;
+}
+
+.ios-save-method--disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.ios-save-method:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.ios-save-method__title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.ios-save-method__hint {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: #9ab08f;
+}
+
 .ios-save-modal__actions .btn-save {
   text-decoration: none;
   text-align: center;
